@@ -9,6 +9,7 @@ import { useEventMessageStore } from "#/stores/event-message-store";
 import { useEventStore } from "#/stores/use-event-store";
 import { isV1Event, isActionEvent } from "#/types/v1/type-guards";
 import { useActiveConversation } from "#/hooks/query/use-active-conversation";
+import { useSubConversations } from "#/hooks/query/use-sub-conversations";
 import { useAgentState } from "#/hooks/use-agent-state";
 import { useRespondToConfirmation } from "#/hooks/mutation/use-respond-to-confirmation";
 import { SecurityRisk } from "#/types/v1/core/base/common";
@@ -24,6 +25,12 @@ export function V1ConfirmationButtons() {
 
   const { t } = useTranslation();
   const { data: conversation } = useActiveConversation();
+  // In plan mode the pending action belongs to the planning sub-conversation
+  // (its own sandbox). Answering on the parent instead left the planner stuck
+  // and made the parent's code agent run the task unasked (phone test 2026-09-21).
+  const { data: subConversations } = useSubConversations(
+    conversation?.sub_conversation_ids,
+  );
   const { curAgentState } = useAgentState();
   const { mutate: respondToConfirmation } = useRespondToConfirmation();
   const events = useEventStore((state) => state.events);
@@ -60,17 +67,25 @@ export function V1ConfirmationButtons() {
       // Mark event as submitted to prevent duplicate submissions
       addV1SubmittedEventId(awaitingAction.id);
 
+      const fromPlanner = (awaitingAction as { isFromPlanningAgent?: boolean })
+        .isFromPlanningAgent;
+      const target =
+        fromPlanner && subConversations?.[0]
+          ? subConversations[0]
+          : conversation;
+
       // Call the V1 API endpoint
       respondToConfirmation({
-        conversationId: conversation.id,
-        conversationUrl: conversation.conversation_url || "",
-        sessionApiKey: conversation.session_api_key,
+        conversationId: target.id,
+        conversationUrl: target.conversation_url || "",
+        sessionApiKey: target.session_api_key,
         accept,
       });
     },
     [
       awaitingAction,
       conversation,
+      subConversations,
       addV1SubmittedEventId,
       respondToConfirmation,
     ],
@@ -141,7 +156,7 @@ export function V1ConfirmationButtons() {
 
   return (
     <div
-      className="flex flex-col gap-2 pt-4"
+      className="flex flex-col gap-2 pt-4 scroll-mb-40"
       data-testid="v1-confirmation-panel"
     >
       {isHighRisk && (

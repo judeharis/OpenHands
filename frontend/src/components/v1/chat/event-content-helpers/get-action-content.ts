@@ -1,5 +1,5 @@
 import { ActionEvent } from "#/types/v1/core";
-import { getDefaultEventContent, MAX_CONTENT_LENGTH } from "./shared";
+import { MAX_CONTENT_LENGTH } from "./shared";
 import i18n from "#/i18n";
 import { SecurityRisk } from "#/types/v1/core/base/common";
 import {
@@ -227,9 +227,32 @@ const getBrowserActionContent = (action: BrowserAction): string => {
   }
 };
 
+// Unknown action kinds: show the action's own fields as a list, not the whole
+// event (tool-call ids, llm_response_id, …) as a JSON dump.
+const getGenericActionContent = (action: object): string => {
+  const rows = Object.entries(action as Record<string, unknown>)
+    .filter(
+      ([k, v]) => k !== "kind" && v !== null && v !== undefined && v !== "",
+    )
+    .map(([k, v]) => {
+      const text = typeof v === "string" ? v : JSON.stringify(v);
+      const shown =
+        text.length > MAX_CONTENT_LENGTH
+          ? `${text.slice(0, MAX_CONTENT_LENGTH)}…`
+          : text;
+      return text.includes("\n")
+        ? `**${k}:**\n\`\`\`\n${shown}\n\`\`\``
+        : `**${k}:** \`${shown}\``;
+    });
+  return rows.join("\n");
+};
+
 export const getActionContent = (event: ActionEvent): string => {
   const { action } = event;
   const actionType = action.kind;
+  if ((actionType as string) === "InvokeSkillAction") {
+    return getNoContentActionContent();
+  }
 
   switch (actionType) {
     case "FileEditorAction":
@@ -276,6 +299,6 @@ export const getActionContent = (event: ActionEvent): string => {
       );
 
     default:
-      return getDefaultEventContent(event);
+      return getGenericActionContent(action);
   }
 };

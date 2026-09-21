@@ -92,6 +92,11 @@ const getActionEventTitle = (event: OpenHandsEvent): React.ReactNode => {
   }
 
   const actionType = event.action.kind;
+  // Not in the typed union yet: the agent-server's skill loader.
+  if ((actionType as string) === "InvokeSkillAction") {
+    const name = (event.action as { name?: string }).name ?? "";
+    return `Loading skill ${name}`.trim();
+  }
   let actionKey = "";
   let actionValues: Record<string, unknown> = {};
 
