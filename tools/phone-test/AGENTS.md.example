@@ -21,4 +21,7 @@ beat many small ones.
   (that is the address the phone can open) — `localhost:5173` is not reachable from the phone.
 - Reading files, listing directories and searching are cheap; still, batch them: view a directory
   once instead of one file at a time, and do not re-check what you already read.
+- To hand the user a web app they can open any time (no dev server needed): build it with
+  `npx vite build --base ./` and tell them `https://jude.tail0bda35.ts.net:40000/games/<folder>/`
+  — that serves `<folder>/dist/` from this workspace. Prefer this over a dev server when done.
 - When you finish, summarise in 3–5 short lines: what was built, where, how to run it.
