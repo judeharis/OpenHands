@@ -1,6 +1,7 @@
 import { Trans } from "react-i18next";
 import React from "react";
 import { OpenHandsEvent, ObservationEvent, ActionEvent } from "#/types/v1/core";
+import { FileEditorAction } from "#/types/v1/core/base/action";
 import {
   isActionEvent,
   isObservationEvent,
@@ -92,6 +93,17 @@ const getActionEventTitle = (event: OpenHandsEvent): React.ReactNode => {
   }
 
   const actionType = event.action.kind;
+  // The planning agent's editor is a separate kind with the same shape.
+  if ((actionType as string) === "PlanningFileEditorAction") {
+    const a = event.action as unknown as FileEditorAction;
+    const key =
+      a.command === "view"
+        ? "ACTION_MESSAGE$READ"
+        : a.command === "create"
+          ? "ACTION_MESSAGE$WRITE"
+          : "ACTION_MESSAGE$EDIT";
+    return createTitleFromKey(key, { path: a.path });
+  }
   // Not in the typed union yet: the agent-server's skill loader.
   if ((actionType as string) === "InvokeSkillAction") {
     const name = (event.action as { name?: string }).name ?? "";

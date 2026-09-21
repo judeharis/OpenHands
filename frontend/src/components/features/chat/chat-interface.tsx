@@ -28,6 +28,7 @@ import { useUnifiedUploadFiles } from "#/hooks/mutation/use-unified-upload-files
 import { validateFiles } from "#/utils/file-validation";
 import { useConversationStore } from "#/stores/conversation-store";
 import ConfirmationModeEnabled from "./confirmation-mode-enabled";
+import { V1ConfirmationButtons } from "#/components/shared/buttons/v1-confirmation-buttons";
 import { useTaskPolling } from "#/hooks/query/use-task-polling";
 import { useConversationWebSocket } from "#/contexts/conversation-websocket-context";
 import ChatStatusIndicator from "./chat-status-indicator";
@@ -280,6 +281,10 @@ export function ChatInterface() {
         </div>
 
         <div className="flex flex-col gap-[6px]">
+          {/* Pinned above the composer: on a phone the thread rarely auto-scrolls
+              far enough to show a panel placed at the end of the messages, and
+              answering a pending action must never require scrolling. */}
+          <V1ConfirmationButtons />
           <BtwMessages conversationId={params.conversationId} />
           <div className="flex justify-between relative">
             <div className="flex items-end gap-1">

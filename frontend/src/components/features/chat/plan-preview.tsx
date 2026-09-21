@@ -122,7 +122,7 @@ export function PlanPreview({
           onClick={handleBuildClick}
           disabled={isBuildDisabled}
           className={cn(
-            "bg-white flex items-center justify-center h-[26px] px-2 rounded-[4px] w-[93px] transition-opacity",
+            "bg-white flex items-center justify-center min-h-9 px-4 rounded-[4px] transition-opacity",
             isBuildDisabled
               ? "opacity-50 cursor-not-allowed"
               : "hover:opacity-90 cursor-pointer",
@@ -130,8 +130,10 @@ export function PlanPreview({
           data-testid="plan-preview-build-button"
         >
           <Typography.Text className="font-medium text-[14px] text-black leading-5">
-            {t(I18nKey.COMMON$BUILD)}{" "}
-            <Typography.Text className="font-medium text-black">
+            {t(I18nKey.COMMON$BUILD)}
+            {/* keyboard hint only where a keyboard is likely */}
+            <Typography.Text className="font-medium text-black hidden [@media(hover:hover)_and_(pointer:fine)]:inline">
+              {" "}
               ⌘↩
             </Typography.Text>
           </Typography.Text>

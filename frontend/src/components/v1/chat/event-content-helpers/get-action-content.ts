@@ -253,6 +253,9 @@ export const getActionContent = (event: ActionEvent): string => {
   if ((actionType as string) === "InvokeSkillAction") {
     return getNoContentActionContent();
   }
+  if ((actionType as string) === "PlanningFileEditorAction") {
+    return getFileEditorActionContent(action as unknown as FileEditorAction);
+  }
 
   switch (actionType) {
     case "FileEditorAction":

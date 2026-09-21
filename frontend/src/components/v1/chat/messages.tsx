@@ -7,7 +7,6 @@ import { ModelMessages } from "../../features/chat/model-messages";
 import { useOptimisticUserMessageStore } from "#/stores/optimistic-user-message-store";
 import { useModelStore } from "#/stores/model-store";
 import { usePlanPreviewEvents } from "./hooks/use-plan-preview-events";
-import { V1ConfirmationButtons } from "#/components/shared/buttons/v1-confirmation-buttons";
 // TODO: Implement microagent functionality for V1 when APIs support V1 event IDs
 // import { AgentState } from "#/types/agent-state";
 // import MemoryIcon from "#/icons/memory_icon.svg?react";
@@ -74,11 +73,6 @@ export const Messages: React.FC<MessagesProps> = React.memo(
             </React.Fragment>
           );
         })}
-
-        {/* One confirmation panel for the whole thread. It used to live inside
-            whichever component rendered the last message, and disappeared when
-            that was a streaming bubble or a hidden plan-mode edit. */}
-        <V1ConfirmationButtons />
 
         {optimisticUserMessage && (
           <ChatMessage type="user" message={optimisticUserMessage} />

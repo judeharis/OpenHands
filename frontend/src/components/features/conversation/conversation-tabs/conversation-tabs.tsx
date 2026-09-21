@@ -135,7 +135,8 @@ export function ConversationTabs() {
     <div
       className={cn(
         "relative w-full",
-        "flex flex-row justify-start lg:justify-end items-center gap-4.5 flex-wrap",
+        // one scrollable row on narrow screens: wrapping pushed the ⋮ menu onto a second line
+        "flex flex-row justify-start lg:justify-end items-center gap-4.5 flex-nowrap overflow-x-auto lg:flex-wrap",
       )}
     >
       {visibleTabs.map(

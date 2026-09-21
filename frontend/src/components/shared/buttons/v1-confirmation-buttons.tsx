@@ -156,7 +156,7 @@ export function V1ConfirmationButtons() {
 
   return (
     <div
-      className="flex flex-col gap-2 pt-4 scroll-mb-40"
+      className="flex flex-col gap-2 px-4"
       data-testid="v1-confirmation-panel"
     >
       {isHighRisk && (
