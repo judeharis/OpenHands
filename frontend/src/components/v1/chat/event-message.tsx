@@ -98,7 +98,6 @@ const renderUserMessageWithSkillReady = (
       <>
         <UserAssistantEventMessage
           event={messageEvent}
-          isLastMessage={false}
           isFromPlanningAgent={commonProps.isFromPlanningAgent}
         />
         <GenericEventMessageWrapper
@@ -112,7 +111,6 @@ const renderUserMessageWithSkillReady = (
     return (
       <UserAssistantEventMessage
         event={messageEvent}
-        isLastMessage={isLastMessage}
         isFromPlanningAgent={commonProps.isFromPlanningAgent}
       />
     );
@@ -312,8 +310,7 @@ export function EventMessage({
     return (
       <UserAssistantEventMessage
         event={messageEvent}
-        {...commonProps}
-        isLastMessage={isLastMessage}
+        isFromPlanningAgent={isFromPlanningAgent}
       />
     );
   }

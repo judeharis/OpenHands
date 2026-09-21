@@ -10,7 +10,6 @@ import {
   SkillReadyEvent,
   isSkillReadyEvent,
 } from "../event-content-helpers/create-skill-ready-event";
-import { V1ConfirmationButtons } from "#/components/shared/buttons/v1-confirmation-buttons";
 import { ObservationResultStatus } from "../../../features/chat/event-content-helpers/get-observation-result";
 import { SkillReadyContentList } from "./skill-ready-content-list";
 
@@ -62,7 +61,6 @@ export function GenericEventMessageWrapper({
         success={success}
         initiallyExpanded={isLastMessage}
       />
-      {isLastMessage && <V1ConfirmationButtons />}
     </div>
   );
 }

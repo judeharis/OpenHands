@@ -2,19 +2,16 @@ import React from "react";
 import { MessageEvent } from "#/types/v1/core";
 import { ChatMessage } from "../../../features/chat/chat-message";
 import { ImageCarousel } from "../../../features/images/image-carousel";
-import { V1ConfirmationButtons } from "#/components/shared/buttons/v1-confirmation-buttons";
 import { parseMessageFromEvent } from "../event-content-helpers/parse-message-from-event";
 import { CriticResultDisplay } from "./critic-result-display";
 
 interface UserAssistantEventMessageProps {
   event: MessageEvent;
-  isLastMessage: boolean;
   isFromPlanningAgent: boolean;
 }
 
 export function UserAssistantEventMessage({
   event,
-  isLastMessage,
   isFromPlanningAgent,
 }: UserAssistantEventMessageProps) {
   const message = parseMessageFromEvent(event);
@@ -38,7 +35,6 @@ export function UserAssistantEventMessage({
         {imageUrls.length > 0 && (
           <ImageCarousel size="small" images={imageUrls} />
         )}
-        {isLastMessage && <V1ConfirmationButtons />}
       </ChatMessage>
       {event.source === "agent" && event.critic_result != null && (
         <CriticResultDisplay criticResult={event.critic_result} />

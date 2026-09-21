@@ -12,6 +12,7 @@ import { useActiveConversation } from "#/hooks/query/use-active-conversation";
 import { useAgentState } from "#/hooks/use-agent-state";
 import { useRespondToConfirmation } from "#/hooks/mutation/use-respond-to-confirmation";
 import { SecurityRisk } from "#/types/v1/core/base/common";
+import { getEventContent } from "#/components/v1/chat/event-content-helpers/get-event-content";
 
 export function V1ConfirmationButtons() {
   const v1SubmittedEventIds = useEventMessageStore(
@@ -27,16 +28,18 @@ export function V1ConfirmationButtons() {
   const { mutate: respondToConfirmation } = useRespondToConfirmation();
   const events = useEventStore((state) => state.events);
 
-  // Find the most recent V1 action awaiting confirmation
-  const awaitingAction = events
-    .filter(isV1Event)
-    .slice()
-    .reverse()
-    .find((ev) => {
-      if (ev.source !== "agent") return false;
-      // For V1, we check if the agent state is waiting for confirmation
-      return curAgentState === AgentState.AWAITING_USER_CONFIRMATION;
-    });
+  // Find the most recent V1 action awaiting confirmation. It must be the last
+  // *action* (not just the last agent event): the agent usually streams a
+  // thought before the tool call, and in plan mode the pending file edit is not
+  // even shown in the thread, so this panel names the action itself.
+  const awaitingAction =
+    curAgentState === AgentState.AWAITING_USER_CONFIRMATION
+      ? events
+          .filter(isV1Event)
+          .slice()
+          .reverse()
+          .find((ev) => ev.source === "agent" && isActionEvent(ev))
+      : undefined;
 
   const handleConfirmation = useCallback(
     (accept: boolean) => {
@@ -111,8 +114,15 @@ export function V1ConfirmationButtons() {
 
   const isHighRisk = risk === SecurityRisk.HIGH;
 
+  const pendingTitle = isActionEvent(awaitingAction)
+    ? getEventContent(awaitingAction).title
+    : null;
+
   return (
-    <div className="flex flex-col gap-2 pt-4">
+    <div
+      className="flex flex-col gap-2 pt-4"
+      data-testid="v1-confirmation-panel"
+    >
       {isHighRisk && (
         <RiskAlert
           content={t(I18nKey.CHAT_INTERFACE$HIGH_RISK_WARNING)}
@@ -122,9 +132,16 @@ export function V1ConfirmationButtons() {
         />
       )}
       <div className="flex flex-wrap justify-between items-center gap-3 rounded-lg border border-neutral-600 bg-neutral-800/60 px-3 py-2">
-        <p className="text-sm font-normal text-white">
-          {t(I18nKey.CHAT_INTERFACE$USER_ASK_CONFIRMATION)}
-        </p>
+        <div className="flex flex-col gap-1 min-w-0">
+          {pendingTitle && (
+            <p className="text-sm font-bold text-neutral-300 break-words">
+              {pendingTitle}
+            </p>
+          )}
+          <p className="text-sm font-normal text-white">
+            {t(I18nKey.CHAT_INTERFACE$USER_ASK_CONFIRMATION)}
+          </p>
+        </div>
         <div className="flex items-center gap-3 ml-auto">
           <ActionTooltip
             type="reject"
