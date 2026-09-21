@@ -96,12 +96,9 @@ const getActionEventTitle = (event: OpenHandsEvent): React.ReactNode => {
   // The planning agent's editor is a separate kind with the same shape.
   if ((actionType as string) === "PlanningFileEditorAction") {
     const a = event.action as unknown as FileEditorAction;
-    const key =
-      a.command === "view"
-        ? "ACTION_MESSAGE$READ"
-        : a.command === "create"
-          ? "ACTION_MESSAGE$WRITE"
-          : "ACTION_MESSAGE$EDIT";
+    let key = "ACTION_MESSAGE$EDIT";
+    if (a.command === "view") key = "ACTION_MESSAGE$READ";
+    else if (a.command === "create") key = "ACTION_MESSAGE$WRITE";
     return createTitleFromKey(key, { path: a.path });
   }
   // Not in the typed union yet: the agent-server's skill loader.

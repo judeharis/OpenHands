@@ -1,0 +1,24 @@
+# Working in this workspace
+
+You are driven from a phone. Every tool call pauses for a tap, so fewer, larger, correct steps
+beat many small ones.
+
+## Rules
+- Work only under `/workspace/project`. Never touch paths outside `/workspace`.
+- Commands run in a non-interactive shell with no TTY. Never run a command that asks a question,
+  and never reply `y` or send Ctrl-C to a prompt. Use non-interactive flags:
+  `npx --yes create-vite@latest NAME --template react`, `npm install --no-audit --no-fund`,
+  `pip install --quiet`, `apt-get -y`.
+- If a command produced a prompt, it has already exited; re-run it with a non-interactive flag.
+- Do not use scaffolding CLIs (`npm create vite`, `create-vite`, `create-next-app`, …): they ask
+  questions even with `--yes` (create-vite 9 asks "Which linter?") and the shell cannot answer.
+  Write the project files directly, one `file_editor create` each: `package.json`,
+  `vite.config.js`, `index.html`, `src/main.jsx`, `src/App.jsx`, `src/index.css`; then
+  `npm install --no-audit --no-fund`. `file_editor create` makes parent directories; no `mkdir`.
+- Dev servers: bind to `0.0.0.0` on port **8011** (`npm run dev -- --host 0.0.0.0 --port 8011`),
+  run them in the background, and tell the user the URL exactly as listed under "work hosts"
+  in your context, but replace `http://localhost:40000` with `https://jude.tail0bda35.ts.net:40000`
+  (that is the address the phone can open) — `localhost:5173` is not reachable from the phone.
+- Reading files, listing directories and searching are cheap; still, batch them: view a directory
+  once instead of one file at a time, and do not re-check what you already read.
+- When you finish, summarise in 3–5 short lines: what was built, where, how to run it.

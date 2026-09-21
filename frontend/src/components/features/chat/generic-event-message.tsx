@@ -52,7 +52,9 @@ export function GenericEventMessage({
   return (
     <div className="flex flex-col gap-2 border-l-2 pl-2 my-2 py-2 border-neutral-300 text-sm w-full">
       <div className="flex items-center justify-between font-bold text-neutral-300">
-        <div className="flex items-center">
+        {/* whitespace-pre-wrap: the title is "Writing to " + <path/>; as flex
+            children the trailing space collapsed and read "Writing toApp.jsx" */}
+        <div className="flex items-center flex-wrap whitespace-pre-wrap min-w-0">
           {chevronPosition === "before" && chevron}
           {title}
           {chevronPosition === "after" && chevron}
