@@ -34,8 +34,14 @@ function HomeScreen() {
           className="flex flex-col gap-5 px-6 sm:max-w-full sm:min-w-full md:flex-row lg:px-0 lg:max-w-[703px] lg:min-w-[703px]"
           data-testid="home-screen-new-conversation-section"
         >
-          <RepoConnector onRepoSelection={(repo) => setSelectedRepo(repo)} />
-          <NewConversation />
+          {/* On a phone the repo card pushed "Start from Scratch" below the
+              fold; it is the common case here, so it goes first on narrow screens. */}
+          <div className="order-2 md:order-1 md:flex-1 flex">
+            <RepoConnector onRepoSelection={(repo) => setSelectedRepo(repo)} />
+          </div>
+          <div className="order-1 md:order-2 md:flex-1 flex">
+            <NewConversation />
+          </div>
         </div>
       </div>
 

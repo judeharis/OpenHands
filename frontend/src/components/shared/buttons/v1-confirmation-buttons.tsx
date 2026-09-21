@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { I18nKey } from "#/i18n/declaration";
 import { AgentState } from "#/types/agent-state";
@@ -40,6 +40,16 @@ export function V1ConfirmationButtons() {
           .reverse()
           .find((ev) => ev.source === "agent" && isActionEvent(ev))
       : undefined;
+
+  // On a phone the thread often does not auto-scroll far enough and the panel
+  // sits under the composer; bring it into view whenever a new action arrives.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const awaitingId = awaitingAction?.id;
+  useEffect(() => {
+    if (awaitingId) {
+      panelRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    }
+  }, [awaitingId]);
 
   const handleConfirmation = useCallback(
     (accept: boolean) => {
@@ -98,13 +108,24 @@ export function V1ConfirmationButtons() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [awaitingAction, handleConfirmation]);
 
-  // Only show if agent is waiting for confirmation and we haven't already submitted
   if (
     curAgentState !== AgentState.AWAITING_USER_CONFIRMATION ||
-    !awaitingAction ||
-    v1SubmittedEventIds.includes(awaitingAction.id)
+    !awaitingAction
   ) {
     return null;
+  }
+
+  // Already answered, agent has not moved on yet: say so, or a phone user
+  // cannot tell a slow model from a tap that did not register.
+  if (v1SubmittedEventIds.includes(awaitingAction.id)) {
+    return (
+      <p
+        className="pt-4 text-sm text-neutral-400"
+        data-testid="v1-confirmation-sent"
+      >
+        {t(I18nKey.CHAT_INTERFACE$USER_CONFIRMED)} …
+      </p>
+    );
   }
 
   // Get security risk from the action (only ActionEvent has security_risk)

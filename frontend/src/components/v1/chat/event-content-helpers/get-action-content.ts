@@ -66,7 +66,7 @@ const getFileEditorActionContent = (
 ): string => {
   const truncate = (text: string) =>
     text.length > MAX_CONTENT_LENGTH
-      ? `${text.slice(0, MAX_CONTENT_LENGTH)}...`
+      ? `${text.slice(0, MAX_CONTENT_LENGTH)}\n… (${text.length - MAX_CONTENT_LENGTH} more characters not shown)`
       : text;
   const fence = (text: string) => `\`\`\`\n${truncate(text)}\n\`\`\``;
 

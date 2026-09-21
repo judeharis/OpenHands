@@ -48,6 +48,10 @@ export function code({
             color: "#e6edf3",
             border: "1px solid #30363d",
             overflow: "auto",
+            // wrap long lines: on a phone a clipped command is a command you
+            // approve without having read it
+            whiteSpace: "pre-wrap",
+            overflowWrap: "anywhere",
           }}
         >
           <code className={className}>{codeString}</code>
