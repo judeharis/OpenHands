@@ -46,11 +46,37 @@ const createTitleFromKey = (
   );
 };
 
+// A summary of the form `tool_name: {"command": ...}` is not an LLM summary at all:
+// it is the raw tool call, which the agent-server substitutes when the model returns
+// no summary (every local model we run). Showing it verbatim puts a JSON blob in the
+// card title, so treat it as absent and fall back to the translated titles below.
+const isRawToolCallSummary = (event: ActionEvent, summary: string): boolean => {
+  const toolPrefix = event.tool_name ? `${event.tool_name}:` : null;
+  const startsWithToolName =
+    toolPrefix !== null && summary.startsWith(toolPrefix);
+  const looksLikeJsonDump = /^[\w.-]+:\s*[{[]/.test(summary);
+  // The wire format is flat ({id, name, arguments}); the declared type nests it
+  // under `function`. Accept either.
+  const toolCall = event.tool_call as unknown as {
+    arguments?: string;
+    function?: { arguments?: string };
+  };
+  const args = toolCall?.arguments ?? toolCall?.function?.arguments;
+  const isArgumentsVerbatim =
+    typeof args === "string" &&
+    args.trim().length > 0 &&
+    summary.includes(args.trim());
+  return startsWithToolName || looksLikeJsonDump || isArgumentsVerbatim;
+};
+
 const getSummaryTitleForActionEvent = (
   event: ActionEvent,
 ): React.ReactNode | null => {
   const summary = event.summary?.trim().replace(/\s+/g, " ") || "";
-  return summary || null;
+  if (!summary || isRawToolCallSummary(event, summary)) {
+    return null;
+  }
+  return summary;
 };
 
 // Action Event Processing

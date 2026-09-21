@@ -1,6 +1,9 @@
 {
-    "name": "",
-    "short_name": "",
+    "name": "OpenHands",
+    "short_name": "OpenHands",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
     "icons": [
         {
             "src": "/android-chrome-192x192.png",
@@ -10,10 +13,10 @@
         {
             "src": "/android-chrome-512x512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         }
     ],
-    "theme_color": "#ffffff",
-    "background_color": "#ffffff",
-    "display": "standalone"
+    "theme_color": "#0f0f0f",
+    "background_color": "#0f0f0f"
 }

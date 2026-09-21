@@ -121,11 +121,11 @@ export function V1ConfirmationButtons() {
           title={t(I18nKey.COMMON$HIGH_RISK)}
         />
       )}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3 rounded-lg border border-neutral-600 bg-neutral-800/60 px-3 py-2">
         <p className="text-sm font-normal text-white">
           {t(I18nKey.CHAT_INTERFACE$USER_ASK_CONFIRMATION)}
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 ml-auto">
           <ActionTooltip
             type="reject"
             onClick={() => handleConfirmation(false)}

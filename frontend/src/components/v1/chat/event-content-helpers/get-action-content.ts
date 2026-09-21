@@ -64,25 +64,32 @@ const getSearchActionContent = (
 const getFileEditorActionContent = (
   action: FileEditorAction | StrReplaceEditorAction,
 ): string => {
-  // Early return if not a create command or no file text
-  if (action.command !== "create" || !action.file_text) {
-    return getNoContentActionContent();
-  }
+  const truncate = (text: string) =>
+    text.length > MAX_CONTENT_LENGTH
+      ? `${text.slice(0, MAX_CONTENT_LENGTH)}...`
+      : text;
+  const fence = (text: string) => `\`\`\`\n${truncate(text)}\n\`\`\``;
 
-  // Process file text with length truncation
-  let fileText = action.file_text;
-  if (fileText.length > MAX_CONTENT_LENGTH) {
-    fileText = `${fileText.slice(0, MAX_CONTENT_LENGTH)}...`;
+  if (action.command === "create" && action.file_text) {
+    return `**${action.path}**\n\n${fence(action.file_text)}`;
   }
-
-  return `${action.path}\n${fileText}`;
+  if (action.command === "str_replace" && action.old_str !== null) {
+    return (
+      `**${action.path}**\n\n**Replace**\n${fence(action.old_str ?? "")}` +
+      `\n**With**\n${fence(action.new_str ?? "")}`
+    );
+  }
+  if (action.command === "insert" && action.new_str) {
+    return `**${action.path}** (line ${action.insert_line ?? "?"})\n\n${fence(action.new_str)}`;
+  }
+  return getNoContentActionContent();
 };
 
 // Command Actions
 const getExecuteBashActionContent = (
   event: ActionEvent<ExecuteBashAction | TerminalAction>,
 ): string => {
-  let content = `Command:\n\`${event.action.command}\``;
+  let content = `\`\`\`bash\n${event.action.command}\n\`\`\``;
 
   // Add security risk information if it's HIGH or MEDIUM
   if (

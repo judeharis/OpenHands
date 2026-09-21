@@ -60,7 +60,7 @@ export function GenericEventMessageWrapper({
         title={title}
         details={skillReadyDetails}
         success={success}
-        initiallyExpanded={false}
+        initiallyExpanded={isLastMessage}
       />
       {isLastMessage && <V1ConfirmationButtons />}
     </div>
