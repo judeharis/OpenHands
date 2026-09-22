@@ -1,25 +1,323 @@
 [
-  {"name": "glob is read-only", "action": {"tool_name": "glob", "action": {"kind": "GlobAction", "pattern": "**/*.jsx"}}, "verdict": "auto"},
-  {"name": "grep is read-only", "action": {"tool_name": "grep", "action": {"kind": "GrepAction", "pattern": "TODO"}}, "verdict": "auto"},
-  {"name": "task tracker", "action": {"tool_name": "task_tracker", "action": {"kind": "TaskTrackerAction", "command": "plan"}}, "verdict": "auto"},
-  {"name": "skill load", "action": {"tool_name": "invoke_skill", "action": {"kind": "InvokeSkillAction", "name": "npm"}}, "verdict": "auto"},
-  {"name": "planner editor writes PLAN.md", "action": {"tool_name": "planning_file_editor", "action": {"kind": "PlanningFileEditorAction", "command": "create", "path": "/workspace/project/.agents_tmp/PLAN.md"}}, "verdict": "auto"},
-  {"name": "file view", "action": {"tool_name": "file_editor", "action": {"kind": "FileEditorAction", "command": "view", "path": "/workspace/project/src/App.jsx"}}, "verdict": "auto"},
-  {"name": "file create asks", "action": {"tool_name": "file_editor", "action": {"kind": "FileEditorAction", "command": "create", "path": "/workspace/project/tictactoe2/src/App.jsx", "file_text": "x"}}, "verdict": "ask", "suggested": ["write:/workspace/project/tictactoe2/src/", "write:/workspace/project/tictactoe2/", "write:/workspace/project/"]},
-  {"name": "file create under a granted prefix", "config": {"grants": ["write:/workspace/project/tictactoe2/"]}, "action": {"tool_name": "file_editor", "action": {"kind": "FileEditorAction", "command": "create", "path": "/workspace/project/tictactoe2/src/App.jsx"}}, "verdict": "auto"},
-  {"name": "str_replace asks", "action": {"tool_name": "file_editor", "action": {"kind": "FileEditorAction", "command": "str_replace", "path": "/workspace/project/x.js", "old_str": "a", "new_str": "b"}}, "verdict": "ask"},
-  {"name": "write outside the workspace", "action": {"tool_name": "file_editor", "action": {"kind": "FileEditorAction", "command": "create", "path": "/etc/cron.d/x"}}, "verdict": "deny"},
-  {"name": "view outside the workspace", "action": {"tool_name": "file_editor", "action": {"kind": "FileEditorAction", "command": "view", "path": "/home/jude/.ssh/config"}}, "verdict": "deny"},
-  {"name": "ls", "action": {"tool_name": "terminal", "action": {"kind": "TerminalAction", "command": "ls -la src"}}, "verdict": "auto"},
-  {"name": "git status and diff", "action": {"tool_name": "terminal", "action": {"kind": "TerminalAction", "command": "git status && git diff --stat"}}, "verdict": "auto"},
-  {"name": "npm install asks", "action": {"tool_name": "terminal", "action": {"kind": "TerminalAction", "command": "npm install --no-audit --no-fund"}}, "verdict": "ask", "suggested": ["cmd:npm install", "cmd:npm"]},
-  {"name": "npm install under a cmd grant", "config": {"grants": ["cmd:npm install"]}, "action": {"tool_name": "terminal", "action": {"kind": "TerminalAction", "command": "npm install --no-audit --no-fund"}}, "verdict": "auto"},
-  {"name": "dev server asks", "action": {"tool_name": "terminal", "action": {"kind": "TerminalAction", "command": "npm run dev -- --host 0.0.0.0 --port 8011"}}, "verdict": "ask", "suggested": ["cmd:npm run", "cmd:npm"]},
-  {"name": "redirection asks", "action": {"tool_name": "terminal", "action": {"kind": "TerminalAction", "command": "ls > files.txt"}}, "verdict": "ask", "suggested": ["cmd:ls"]},
-  {"name": "rm asks", "action": {"tool_name": "terminal", "action": {"kind": "TerminalAction", "command": "rm -rf node_modules"}}, "verdict": "ask", "suggested": ["cmd:rm"]},
-  {"name": "cat /etc/passwd is denied", "action": {"tool_name": "terminal", "action": {"kind": "TerminalAction", "command": "cat /etc/passwd"}}, "verdict": "deny"},
-  {"name": "cd out of the workspace is denied", "action": {"tool_name": "terminal", "action": {"kind": "TerminalAction", "command": "cd / && ls"}}, "verdict": "deny"},
-  {"name": "web search asks", "action": {"tool_name": "searxng_searxng_web_search", "action": {"kind": "MCPToolAction"}}, "verdict": "ask", "suggested": ["tool:searxng_searxng_web_search"]},
-  {"name": "browser navigate asks", "action": {"tool_name": "browser_navigate", "action": {"kind": "BrowserNavigateAction", "url": "http://localhost:8011"}}, "verdict": "ask", "suggested": ["tool:browser_navigate"]},
-  {"name": "browser state is read-only", "action": {"tool_name": "browser_get_state", "action": {"kind": "BrowserGetStateAction"}}, "verdict": "auto"}
+ {
+  "name": "glob is read-only",
+  "action": {
+   "tool_name": "glob",
+   "action": {
+    "kind": "GlobAction",
+    "pattern": "**/*.jsx"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "grep is read-only",
+  "action": {
+   "tool_name": "grep",
+   "action": {
+    "kind": "GrepAction",
+    "pattern": "TODO"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "task tracker",
+  "action": {
+   "tool_name": "task_tracker",
+   "action": {
+    "kind": "TaskTrackerAction",
+    "command": "plan"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "skill load",
+  "action": {
+   "tool_name": "invoke_skill",
+   "action": {
+    "kind": "InvokeSkillAction",
+    "name": "npm"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "planner editor writes PLAN.md",
+  "action": {
+   "tool_name": "planning_file_editor",
+   "action": {
+    "kind": "PlanningFileEditorAction",
+    "command": "create",
+    "path": "/workspace/project/.agents_tmp/PLAN.md"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "file view",
+  "action": {
+   "tool_name": "file_editor",
+   "action": {
+    "kind": "FileEditorAction",
+    "command": "view",
+    "path": "/workspace/project/src/App.jsx"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "file create asks",
+  "action": {
+   "tool_name": "file_editor",
+   "action": {
+    "kind": "FileEditorAction",
+    "command": "create",
+    "path": "/workspace/project/tictactoe2/src/App.jsx",
+    "file_text": "x"
+   }
+  },
+  "verdict": "ask",
+  "suggested": [
+   "write:/workspace/project/tictactoe2/src/",
+   "write:/workspace/project/tictactoe2/",
+   "write:/workspace/project/"
+  ]
+ },
+ {
+  "name": "file create under a granted prefix",
+  "config": {
+   "grants": [
+    "write:/workspace/project/tictactoe2/"
+   ]
+  },
+  "action": {
+   "tool_name": "file_editor",
+   "action": {
+    "kind": "FileEditorAction",
+    "command": "create",
+    "path": "/workspace/project/tictactoe2/src/App.jsx"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "str_replace asks",
+  "action": {
+   "tool_name": "file_editor",
+   "action": {
+    "kind": "FileEditorAction",
+    "command": "str_replace",
+    "path": "/workspace/project/x.js",
+    "old_str": "a",
+    "new_str": "b"
+   }
+  },
+  "verdict": "ask"
+ },
+ {
+  "name": "write outside the workspace",
+  "action": {
+   "tool_name": "file_editor",
+   "action": {
+    "kind": "FileEditorAction",
+    "command": "create",
+    "path": "/etc/cron.d/x"
+   }
+  },
+  "verdict": "deny"
+ },
+ {
+  "name": "view outside the workspace",
+  "action": {
+   "tool_name": "file_editor",
+   "action": {
+    "kind": "FileEditorAction",
+    "command": "view",
+    "path": "/home/jude/.ssh/config"
+   }
+  },
+  "verdict": "deny"
+ },
+ {
+  "name": "ls",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "ls -la src"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "git status and diff",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "git status && git diff --stat"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "npm install asks",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "npm install --no-audit --no-fund"
+   }
+  },
+  "verdict": "ask",
+  "suggested": [
+   "cmd:npm install",
+   "cmd:npm"
+  ]
+ },
+ {
+  "name": "npm install under a cmd grant",
+  "config": {
+   "grants": [
+    "cmd:npm install"
+   ]
+  },
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "npm install --no-audit --no-fund"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "dev server asks",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "npm run dev -- --host 0.0.0.0 --port 8011"
+   }
+  },
+  "verdict": "ask",
+  "suggested": [
+   "cmd:npm run",
+   "cmd:npm"
+  ]
+ },
+ {
+  "name": "redirection asks",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "ls > files.txt"
+   }
+  },
+  "verdict": "ask",
+  "suggested": [
+   "cmd:ls"
+  ]
+ },
+ {
+  "name": "rm asks",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "rm -rf node_modules"
+   }
+  },
+  "verdict": "ask",
+  "suggested": [
+   "cmd:rm"
+  ]
+ },
+ {
+  "name": "cat /etc/passwd is denied",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "cat /etc/passwd"
+   }
+  },
+  "verdict": "deny"
+ },
+ {
+  "name": "cd out of the workspace is denied",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "cd / && ls"
+   }
+  },
+  "verdict": "deny"
+ },
+ {
+  "name": "web search asks",
+  "action": {
+   "tool_name": "searxng_searxng_web_search",
+   "action": {
+    "kind": "MCPToolAction"
+   }
+  },
+  "verdict": "ask",
+  "suggested": [
+   "tool:searxng_searxng_web_search"
+  ]
+ },
+ {
+  "name": "browser navigate asks",
+  "action": {
+   "tool_name": "browser_navigate",
+   "action": {
+    "kind": "BrowserNavigateAction",
+    "url": "http://localhost:8011"
+   }
+  },
+  "verdict": "ask",
+  "suggested": [
+   "tool:browser_navigate"
+  ]
+ },
+ {
+  "name": "browser state is read-only",
+  "action": {
+   "tool_name": "browser_get_state",
+   "action": {
+    "kind": "BrowserGetStateAction"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "planner writing a project file asks",
+  "action": {
+   "tool_name": "planning_file_editor",
+   "action": {
+    "kind": "PlanningFileEditorAction",
+    "command": "create",
+    "path": "/workspace/project/tictactoe5/package.json",
+    "file_text": "{}"
+   }
+  },
+  "verdict": "ask"
+ },
+ {
+  "name": "planner reading is free",
+  "action": {
+   "tool_name": "planning_file_editor",
+   "action": {
+    "kind": "PlanningFileEditorAction",
+    "command": "view",
+    "path": "/workspace/project"
+   }
+  },
+  "verdict": "auto"
+ }
 ]
