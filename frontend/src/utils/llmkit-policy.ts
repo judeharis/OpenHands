@@ -53,6 +53,7 @@ export const DEFAULT_ALLOW_COMMANDS = [
   "which(\\s|$)",
   "echo(\\s|$)",
   "true$",
+  "sleep [0-9.]+$",
   "find(\\s|$)",
   "tree(\\s|$)",
   "du(\\s|$)",

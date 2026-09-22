@@ -1,5 +1,4 @@
 import type { ActionEvent } from "#/types/v1/core";
-import type { FileEditorAction } from "#/types/v1/core/base/action";
 
 const lines = (text: string | null | undefined) =>
   text ? text.split("\n").length : 0;
@@ -45,22 +44,16 @@ function djb2(text: string): string {
   return h.toString(16);
 }
 
-/** Same tool, same arguments => same fingerprint; used to not ask twice. */
+/** Same tool, same arguments => same fingerprint; used to not ask twice. The whole
+ * action counts (a click on another square is another action), file contents hashed. */
 export function fingerprintAction(event: ActionEvent): string {
-  const a = event.action as Partial<FileEditorAction> & {
-    kind?: string;
-    command?: string;
-    pattern?: string;
-  };
-  const body = JSON.stringify({
-    tool: event.tool_name,
-    kind: a.kind,
-    command: a.command,
-    path: a.path,
-    pattern: a.pattern,
-    text: djb2(
-      [a.file_text ?? "", a.old_str ?? "", a.new_str ?? ""].join("|~|"),
-    ),
+  const a = { ...(event.action as Record<string, unknown>) };
+  ["file_text", "old_str", "new_str"].forEach((k) => {
+    if (typeof a[k] === "string") a[k] = djb2(a[k] as string);
   });
+  const body = JSON.stringify(
+    { tool: event.tool_name, action: a },
+    Object.keys({ tool: 0, action: 0, ...a }).sort(),
+  );
   return djb2(body);
 }

@@ -48,6 +48,9 @@ export function V1ConfirmationButtons() {
   const addV1SubmittedEventId = useEventMessageStore(
     (state) => state.addV1SubmittedEventId,
   );
+  const removeV1SubmittedEventId = useEventMessageStore(
+    (state) => state.removeV1SubmittedEventId,
+  );
   const acceptedFingerprints = useEventMessageStore(
     (state) => state.acceptedFingerprints,
   );
@@ -229,6 +232,16 @@ export function V1ConfirmationButtons() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [awaitingId, allSeenBefore, submitted, anyDeny]);
+
+  // An answer the sandbox took flips its status within a second. One that raced the
+  // state update (the sandbox was still running the previous action) is a no-op there,
+  // and the panel would show "confirmed" for ever: after 8 s still waiting, ask again.
+  useEffect(() => {
+    if (!awaiting || !lastAction || !submitted) return undefined;
+    const { id } = lastAction;
+    const timer = window.setTimeout(() => removeV1SubmittedEventId(id), 8000);
+    return () => window.clearTimeout(timer);
+  }, [awaiting, lastAction, submitted, removeV1SubmittedEventId]);
 
   // Keyboard shortcuts
   useEffect(() => {

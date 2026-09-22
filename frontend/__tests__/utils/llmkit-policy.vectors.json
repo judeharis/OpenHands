@@ -319,5 +319,16 @@
    }
   },
   "verdict": "auto"
+ },
+ {
+  "name": "waiting for a dev server is read-only",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "sleep 2 && cat /workspace/project/tictactoe5/dev-server.log"
+   }
+  },
+  "verdict": "auto"
  }
 ]

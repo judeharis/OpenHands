@@ -48,7 +48,7 @@ if (mode === "plan") {
 }
 await input.tap(); await page.keyboard.type(task, { delay: 12 }); await shot(page, "typed");
 await page.getByTestId("submit-button").tap(); note("action", "sent task");
-let sentFollowUp = false; let sawRunning = false; let nudged = false; let approvals = 0, allows = 0, allowed = false, lastApprovalAt = Date.now(), scrolls = 0, missingPanel = 0, built = false, finalText = "";
+let sentFollowUp = false; let sawRunning = false; let nudged = false; const allowedKinds = new Set(); let approvals = 0, allows = 0, lastApprovalAt = Date.now(), scrolls = 0, missingPanel = 0, built = false, finalText = "";
 const deadline = Date.now() + 30 * 60 * 1000;
 while (Date.now() < deadline) {
   await sleep(2500);
@@ -71,9 +71,11 @@ while (Date.now() < deadline) {
     // A person used to Claude Code taps "Allow for session" the first time a write inside
     // the project is asked for, and never sees that kind of prompt again. One tap either way.
     const allow = page.getByTestId("action-allow-session-button");
-    if (!allowed && meta.risk !== "high" && /FileEditorAction/.test(meta.actionKinds || "") && await allow.isVisible().catch(() => false)) {
-      note("action", `tapped Allow for session: ${(await page.getByTestId("v1-allow-hint").innerText().catch(() => "")).slice(0, 100)}`);
-      await allow.tap(); allowed = true; allows++; approvals++; lastApprovalAt = Date.now(); await sleep(4000); continue;
+    // ... and the browser tool the first time the agent play-tests in it.
+    const allowKind = /FileEditorAction/.test(meta.actionKinds || "") ? "files" : /Browser/.test(meta.actionKinds || "") ? "browser" : null;
+    if (allowKind && !allowedKinds.has(allowKind) && meta.risk !== "high" && await allow.isVisible().catch(() => false)) {
+      note("action", `tapped Allow for session (${allowKind}): ${(await page.getByTestId("v1-allow-hint").innerText().catch(() => "")).slice(0, 100)}`);
+      await allow.tap(); allowedKinds.add(allowKind); allows++; approvals++; lastApprovalAt = Date.now(); await sleep(4000); continue;
     }
     const btn = page.getByTestId("action-confirm-button"); const bb = await btn.boundingBox();
     if (bb) { const hit = await page.evaluate(([x, y]) => { const el = document.elementFromPoint(x, y); return el ? (el.closest("[data-testid]")?.getAttribute("data-testid") || el.tagName) : "none"; }, [bb.x + bb.width / 2, bb.y + bb.height / 2]); if (hit !== "action-confirm-button") note("bug", `Continue button obscured by ${hit} at its centre`, { y: Math.round(bb.y) }); }
