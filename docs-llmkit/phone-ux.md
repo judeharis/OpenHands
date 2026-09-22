@@ -231,7 +231,7 @@ that takes two seconds fell between two 2.5 s polls, so the driver never saw the
 
 ## Iteration 5 — the same conversation from a terminal (2026-09-22)
 
-`agentcli` (`local-llm-kit/jentic/cli`) speaks the app-server and sandbox protocols directly:
+`jentic-cli` (`local-llm-kit/jentic/cli`) speaks the app-server and sandbox protocols directly:
 it lists, starts, attaches to and reopens conversations, streams the same events the phone
 sees, answers confirmations with `y` / `n reason` / `a` (a session grant, then continue) /
 `v`, has `/plan` · `/build` for plan mode, and `!cmd` for a shell in the sandbox. Both clients
@@ -250,4 +250,4 @@ the first event (a duplicate keyword); a scripted `wait` swallowed the window in
 confirmation was open; and after answering, the session re-entered the confirmation with
 nothing pending and spun without yielding, starving the event consumer that would have told
 it the sandbox had moved on. From the phone itself the terminal path is `ssh` to the desktop
-(Termius) and `agentcli -r last`; that leg is the user's to try, it is not in the driver.
+(Termius) and `jentic-cli -r last`; that leg is the user's to try, it is not in the driver.
