@@ -51,7 +51,7 @@ describe("TaskSuggestions empty states", () => {
       </MemoryRouter>,
     );
 
-    // agentui: without a git provider there is nothing to suggest, so the card is not
+    // jentic: without a git provider there is nothing to suggest, so the card is not
     // rendered at all (on a phone it only pushed the recent conversations down)
     expect(screen.queryByTestId("task-suggestions")).toBeNull();
   });

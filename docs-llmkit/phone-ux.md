@@ -38,7 +38,7 @@ no sudo; every action paused for a tap; nothing outside `/workspace` was touched
    1000 chars with `...`. **Fixed**: wrapping, 6000 chars, "N more characters not shown".
 6. **Sandboxes never stop and their random host ports collide.** Six sandboxes were alive, one
    18 h old; the next start failed with `Bind for 0.0.0.0:56633 failed` and the phone showed a
-   spinner for 3 min. `agentui off` now removes sandboxes by name; the port race is upstream.
+   spinner for 3 min. `jentic off` now removes sandboxes by name; the port race is upstream.
 7. **The dev-server URL the agent gives is wrong for a phone** (`http://localhost:40000/sb/…`),
    and even the right host gave **403** (Vite's allowedHosts) and could not load its assets from
    `/`. **Fixed** in the proxy (Host → localhost, `sbport` cookie routes `/` to the last sandbox
@@ -121,7 +121,7 @@ that cannot hurt anything.
 
 ## Iteration 3 — reads run, writes ask (2026-09-22)
 
-What changed since the two runs above (all in `local-llm-kit/agentui/`, this fork is now its
+What changed since the two runs above (all in `local-llm-kit/jentic/`, this fork is now its
 submodule): the sandbox runs `llmkit_policy`, a security analyzer that rates read-only tools,
 file views and an allow-list of terminal commands LOW (they run), anything outside `/workspace`
 HIGH, everything else MEDIUM (it asks) under `ConfirmRisky(MEDIUM)`; the app installs it in every
@@ -129,7 +129,7 @@ conversation's start request. The panel lists the whole pending batch with one C
 third button **Allow for session** (a `write:<dir>/` or `cmd:<prefix>` grant, then continue),
 does not ask twice for an identical batch, colours by the policy's verdict, shows "new file, 20
 lines" and the path with the project prefix greyed, and can send a rejection reason. Sessions:
-sandboxes are kept (max 50, `agentui off` stops rather than removes), old conversations show
+sandboxes are kept (max 50, `jentic off` stops rather than removes), old conversations show
 their whole history and **Reopen**, each sandbox has its own conversations directory.
 
 Same task as iteration 1 (folder `tictactoe3`), same driver, same viewport. The driver now taps
@@ -159,7 +159,7 @@ re-measurement is iteration 4.
 
 Everything else of the ranked list that landed in this iteration: A1 (server-side, not a robot
 tap), A2, A3, A4, B5, B6, E16, E17, C9 (the planner's three tools are all read-only, so it
-needs zero taps — when it is not looping), C10 (`agentui reap --idle`, off by default), C11 (the
+needs zero taps — when it is not looping), C10 (`jentic reap --idle`, off by default), C11 (the
 app sitecustomize keeps a new sandbox off any port a stopped one holds), D12–D15 (one header
 row, no repo chrome without a provider, toasts at the bottom, an Open button on work-host
 links), B7 (a "(1) Waiting for you" title badge and an opt-in browser notification; Web Push
@@ -231,7 +231,7 @@ that takes two seconds fell between two 2.5 s polls, so the driver never saw the
 
 ## Iteration 5 — the same conversation from a terminal (2026-09-22)
 
-`agentcli` (`local-llm-kit/agentui/cli`) speaks the app-server and sandbox protocols directly:
+`agentcli` (`local-llm-kit/jentic/cli`) speaks the app-server and sandbox protocols directly:
 it lists, starts, attaches to and reopens conversations, streams the same events the phone
 sees, answers confirmations with `y` / `n reason` / `a` (a session grant, then continue) /
 `v`, has `/plan` · `/build` for plan mode, and `!cmd` for a shell in the sandbox. Both clients

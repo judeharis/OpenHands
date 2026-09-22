@@ -579,7 +579,7 @@ describe("useSandboxRecovery", () => {
   });
 });
 
-describe("useSandboxRecovery for ERROR and MISSING sandboxes (agentui)", () => {
+describe("useSandboxRecovery for ERROR and MISSING sandboxes (jentic)", () => {
   let mockMutate: ReturnType<typeof vi.fn>;
 
   const createWrapper = () => {
