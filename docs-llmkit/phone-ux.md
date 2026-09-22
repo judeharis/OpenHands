@@ -105,8 +105,11 @@ that cannot hurt anything.
     a reason in the same panel instead of a new message.
 
 ## Facts worth keeping
-- Plan mode = parent conversation + planning sub-conversation, **two sandboxes**, two sets of
-  four published ports each.
+- Plan mode = parent conversation + planning sub-conversation in **the same sandbox**: the app
+  copies the parent's `sandbox_id` into the sub-conversation's start request
+  (`_inherit_configuration_from_parent`). An earlier version of this note said two sandboxes;
+  the DB shows every parent/planner pair on one. The planner has its own conversation id,
+  socket and session key on that sandbox.
 - The UI merges both conversations' events into one thread and marks the planner's with
   `isFromPlanningAgent`; the confirmation target must follow that flag.
 - The agent's terminal has no TTY: any prompt means the command has already exited.
@@ -115,3 +118,57 @@ that cannot hurt anything.
 - `SANDBOX_CONTAINER_URL_PATTERN` is used for both the app's own checks and the browser; it
   cannot carry the tailnet name (the app cannot reach tailscale serve), so the UI/proxy do the
   host rewriting.
+
+## Iteration 3 — reads run, writes ask (2026-09-22)
+
+What changed since the two runs above (all in `local-llm-kit/agentui/`, this fork is now its
+submodule): the sandbox runs `llmkit_policy`, a security analyzer that rates read-only tools,
+file views and an allow-list of terminal commands LOW (they run), anything outside `/workspace`
+HIGH, everything else MEDIUM (it asks) under `ConfirmRisky(MEDIUM)`; the app installs it in every
+conversation's start request. The panel lists the whole pending batch with one Continue, has a
+third button **Allow for session** (a `write:<dir>/` or `cmd:<prefix>` grant, then continue),
+does not ask twice for an identical batch, colours by the policy's verdict, shows "new file, 20
+lines" and the path with the project prefix greyed, and can send a rejection reason. Sessions:
+sandboxes are kept (max 50, `agentui off` stops rather than removes), old conversations show
+their whole history and **Reopen**, each sandbox has its own conversations directory.
+
+Same task as iteration 1 (folder `tictactoe3`), same driver, same viewport. The driver now taps
+Allow for session the first time a write inside the project is asked, as a Claude Code user would.
+
+| | Iteration 1 (baseline) | Iteration 3 |
+|---|---|---|
+| Taps | **18** | **4** (1 of them Allow for session) |
+| Wall time | 6 min 0 s | **2 min 20 s** |
+| Agent actions | – | 10 (7 file edits, 3 commands): 6 ran without a tap |
+| Scrolls to reach the panel | 4 | 0 |
+| Bugs logged by the driver | 1 | 0 |
+| Result | playable game | playable game, built and published under `/games/tictactoe3/` |
+
+The four taps: `package.json` (answered with Allow for session → the other six files ran), then
+three commands: create the directory tree, `npm install`, `vite build`. Each of those is a
+`cmd:` grant away from zero.
+
+**A planner loop the policy hid.** The plan-mode run (folder `tictactoe4`) never reached Build:
+the planner grepped `tictactoe4` in an empty project **seventeen times in a row**, each auto-approved
+in ~1 s, until the SDK's stuck detector stopped the conversation (`execution_status: stuck`). In
+iteration 2 a person saw the second identical `grep` and would have cancelled; with reads free,
+the loop ran at model speed. Fix: the analyzer now rates the **third identical action in a row**
+MEDIUM (it asks; the panel says "the same action 3 times in a row; is it stuck?"), and the driver
+treats `stuck` as a finding plus one nudge instead of waiting out its cap. The plan-mode
+re-measurement is iteration 4.
+
+Everything else of the ranked list that landed in this iteration: A1 (server-side, not a robot
+tap), A2, A3, A4, B5, B6, E16, E17, C9 (the planner's three tools are all read-only, so it
+needs zero taps — when it is not looping), C10 (`agentui reap --idle`, off by default), C11 (the
+app sitecustomize keeps a new sandbox off any port a stopped one holds), D12–D15 (one header
+row, no repo chrome without a provider, toasts at the bottom, an Open button on work-host
+links), B7 (a "(1) Waiting for you" title badge and an opt-in browser notification; Web Push
+needs the backend and is out of scope). Not done: nothing on the list; the remaining tap
+reductions are grants the user chooses.
+
+### Method notes
+- `run.mjs` now records per-confirm `actionKinds` / `risk` / `count` from the panel, counts
+  every agent action from the app-server mirror afterwards (`autoApproved = actions − taps`),
+  and `compare.mjs <baseline> <run>` prints the deltas. Baselines are in `baselines/`.
+- Folder names are bumped per run (`tictactoe3`, `tictactoe4`, …) so the workspace state does not
+  shortcut the task.

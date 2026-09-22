@@ -5,6 +5,9 @@ import { browserTab } from "#/utils/browser-tab";
 import { useSettings } from "#/hooks/query/use-settings";
 import { AGENT_STATUS_MAP } from "#/utils/status";
 import notificationSound from "#/assets/notification.mp3";
+import { showWaitingNotification } from "#/utils/notification-preference";
+
+const BADGE = "(1) Waiting for you · ";
 
 const NOTIFICATION_STATES: AgentState[] = [
   AgentState.AWAITING_USER_INPUT,
@@ -57,7 +60,30 @@ export function useAgentNotification(curAgentState: AgentState) {
       const message = i18nKey ? t(i18nKey) : curAgentState;
       browserTab.startNotification(message);
     }
+    if (curAgentState === AgentState.AWAITING_USER_CONFIRMATION) {
+      showWaitingNotification(
+        t(AGENT_STATUS_MAP[curAgentState] ?? curAgentState),
+        window.location.pathname,
+      );
+    }
   }, [curAgentState, isSoundEnabled, t]);
+
+  // A static badge in the tab title while a confirmation waits, focused or not:
+  // the phone's tab switcher and recent apps show it (phone UX study, item 7).
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    if (curAgentState !== AgentState.AWAITING_USER_CONFIRMATION)
+      return undefined;
+    const base = document.title.startsWith(BADGE)
+      ? document.title.slice(BADGE.length)
+      : document.title;
+    document.title = BADGE + base;
+    return () => {
+      if (document.title.startsWith(BADGE)) {
+        document.title = document.title.slice(BADGE.length);
+      }
+    };
+  }, [curAgentState]);
 
   // Stop tab notification when window gains focus
   useEffect(() => {

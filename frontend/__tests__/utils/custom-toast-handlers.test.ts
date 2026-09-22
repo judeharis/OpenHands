@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import {
   displaySuccessToast,
   displayErrorToast,
+  TOAST_STYLE,
 } from "#/utils/custom-toast-handlers";
 
 // Mock react-hot-toast
@@ -27,7 +28,7 @@ describe("custom-toast-handlers", () => {
         expect.anything(),
         expect.objectContaining({
           duration: 5000, // Should use minimum duration of 5000ms
-          position: "top-right",
+          position: "bottom-center",
           style: expect.objectContaining({
             maxWidth: "400px",
             wordBreak: "break-word",
@@ -45,7 +46,7 @@ describe("custom-toast-handlers", () => {
         expect.anything(),
         expect.objectContaining({
           duration: expect.any(Number),
-          position: "top-right",
+          position: "bottom-center",
           style: expect.objectContaining({
             maxWidth: "400px",
             wordBreak: "break-word",
@@ -75,7 +76,7 @@ describe("custom-toast-handlers", () => {
         expect.anything(),
         expect.objectContaining({
           duration: 4000, // Should use minimum duration of 4000ms for errors
-          position: "top-right",
+          position: "bottom-center",
           style: expect.objectContaining({
             maxWidth: "400px",
             wordBreak: "break-word",
@@ -93,7 +94,7 @@ describe("custom-toast-handlers", () => {
         expect.anything(),
         expect.objectContaining({
           duration: expect.any(Number),
-          position: "top-right",
+          position: "bottom-center",
           style: expect.objectContaining({
             maxWidth: "400px",
             wordBreak: "break-word",

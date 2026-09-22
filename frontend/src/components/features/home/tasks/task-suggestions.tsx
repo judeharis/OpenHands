@@ -51,6 +51,10 @@ export function TaskSuggestions({ filterFor }: TaskSuggestionsProps) {
     setIsExpanded((prev) => !prev);
   };
 
+  // Without a git provider there is nothing to suggest; on a phone the empty
+  // card only pushed the recent conversations down (phone UX study, item 13).
+  if (hasNoProviders) return null;
+
   return (
     <section
       data-testid="task-suggestions"

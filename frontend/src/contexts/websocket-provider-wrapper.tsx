@@ -3,6 +3,7 @@ import { ConversationWebSocketProvider } from "#/contexts/conversation-websocket
 import { useActiveConversation } from "#/hooks/query/use-active-conversation";
 import { useSubConversations } from "#/hooks/query/use-sub-conversations";
 import { useSandboxRecovery } from "#/hooks/use-sandbox-recovery";
+import { useEnsureLlmkitPolicy } from "#/hooks/use-ensure-llmkit-policy";
 import { isTaskConversationId } from "#/utils/conversation-local-storage";
 
 interface WebSocketProviderWrapperProps {
@@ -46,6 +47,8 @@ export function WebSocketProviderWrapper({
     sandboxStatus: conversation?.sandbox_status,
     refetchConversation: isConversationReady ? refetchConversation : undefined,
   });
+  // Server-side auto-approval for the main conversation and the planner
+  useEnsureLlmkitPolicy([conversation, ...(filteredSubConversations ?? [])]);
 
   return (
     <ConversationWebSocketProvider

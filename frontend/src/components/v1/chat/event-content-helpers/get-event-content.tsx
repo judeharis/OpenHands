@@ -1,5 +1,6 @@
 import { Trans } from "react-i18next";
 import React from "react";
+import { fileEditorSummary } from "#/utils/action-summary";
 import { OpenHandsEvent, ObservationEvent, ActionEvent } from "#/types/v1/core";
 import { FileEditorAction } from "#/types/v1/core/base/action";
 import {
@@ -118,7 +119,7 @@ const getActionEventTitle = (event: OpenHandsEvent): React.ReactNode => {
       };
       break;
     case "FileEditorAction":
-    case "StrReplaceEditorAction":
+    case "StrReplaceEditorAction": {
       if (event.action.command === "view") {
         actionKey = "ACTION_MESSAGE$READ";
       } else if (event.action.command === "create") {
@@ -129,7 +130,18 @@ const getActionEventTitle = (event: OpenHandsEvent): React.ReactNode => {
       actionValues = {
         path: event.action.path,
       };
+      // "new file, 111 lines" / "replace 3 lines with 5": enough to decide from
+      const summary = fileEditorSummary(event.action);
+      if (summary) {
+        return (
+          <>
+            {createTitleFromKey(actionKey, actionValues)}
+            <span className="font-normal text-neutral-400"> · {summary}</span>
+          </>
+        );
+      }
       break;
+    }
     case "MCPToolAction":
       actionKey = "ACTION_MESSAGE$CALL_TOOL_MCP";
       actionValues = {

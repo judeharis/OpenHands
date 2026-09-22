@@ -1,3 +1,4 @@
+import { MAX_CONTENT_LENGTH } from "#/components/v1/chat/event-content-helpers/shared";
 import { describe, it, expect } from "vitest";
 import { getACPToolCallContent } from "#/components/v1/chat/event-content-helpers/get-acp-tool-call-content";
 import { getACPToolCallResult } from "#/components/v1/chat/event-content-helpers/get-observation-result";
@@ -72,12 +73,12 @@ describe("getACPToolCallContent", () => {
   });
 
   it("truncates very long output to MAX_CONTENT_LENGTH with an ellipsis", () => {
-    const huge = "x".repeat(5000);
+    const huge = "x".repeat(MAX_CONTENT_LENGTH + 1000);
     const content = getACPToolCallContent(makeEvent({ raw_output: huge }));
 
-    // MAX_CONTENT_LENGTH = 1000 in shared.ts; mirror that budget.
-    expect(content).toMatch(/x{1000}\.\.\./);
-    expect(content).not.toMatch(/x{1001}/);
+    // the budget lives in shared.ts (raised to 6000 for phone review of file writes)
+    expect(content).toMatch(new RegExp(`x{${MAX_CONTENT_LENGTH}}`));
+    expect(content).not.toMatch(new RegExp(`x{${MAX_CONTENT_LENGTH + 1}}`));
   });
 
   it("serialises structured raw_output as JSON", () => {

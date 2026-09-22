@@ -4,6 +4,9 @@ import { buildSessionHeaders } from "#/utils/utils";
 import type {
   ConfirmationResponseRequest,
   ConfirmationResponseResponse,
+  V1ConfirmationPolicy,
+  V1ConversationInfo,
+  V1SecurityAnalyzer,
 } from "./event-service.types";
 import { openHands } from "../open-hands-axios";
 import { OpenHandsEvent } from "#/types/v1/core";
@@ -62,6 +65,53 @@ class EventService {
       { headers },
     );
     return data;
+  }
+
+  /**
+   * The sandbox's view of a conversation: execution status, security analyzer
+   * (with its session grants) and confirmation policy.
+   */
+  static async getConversationInfo(
+    conversationId: string,
+    conversationUrl: string,
+    sessionApiKey?: string | null,
+  ): Promise<V1ConversationInfo> {
+    const runtimeUrl = buildHttpBaseUrl(conversationUrl);
+    const { data } = await axios.get<V1ConversationInfo>(
+      `${runtimeUrl}/api/conversations/${conversationId}`,
+      { headers: buildSessionHeaders(sessionApiKey) },
+    );
+    return data;
+  }
+
+  /** Replace the sandbox's security analyzer (null = none). */
+  static async setSecurityAnalyzer(
+    conversationId: string,
+    conversationUrl: string,
+    securityAnalyzer: V1SecurityAnalyzer | null,
+    sessionApiKey?: string | null,
+  ): Promise<void> {
+    const runtimeUrl = buildHttpBaseUrl(conversationUrl);
+    await axios.post(
+      `${runtimeUrl}/api/conversations/${conversationId}/security_analyzer`,
+      { security_analyzer: securityAnalyzer },
+      { headers: buildSessionHeaders(sessionApiKey) },
+    );
+  }
+
+  /** Replace the sandbox's confirmation policy. */
+  static async setConfirmationPolicy(
+    conversationId: string,
+    conversationUrl: string,
+    policy: V1ConfirmationPolicy,
+    sessionApiKey?: string | null,
+  ): Promise<void> {
+    const runtimeUrl = buildHttpBaseUrl(conversationUrl);
+    await axios.post(
+      `${runtimeUrl}/api/conversations/${conversationId}/confirmation_policy`,
+      { policy },
+      { headers: buildSessionHeaders(sessionApiKey) },
+    );
   }
 
   // V1 conversations — App Server REST endpoint

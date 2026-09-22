@@ -19,6 +19,7 @@ import { OpenRepositoryModal } from "./open-repository-modal";
 import { displayErrorToast } from "#/utils/custom-toast-handlers";
 import { useHomeStore } from "#/stores/home-store";
 import { useOptimisticUserMessageStore } from "#/stores/optimistic-user-message-store";
+import { useUserProviders } from "#/hooks/use-user-providers";
 
 interface GitControlBarProps {
   onSuggestionsClick: (value: string) => void;
@@ -55,6 +56,10 @@ export function GitControlBar({ onSuggestionsClick }: GitControlBarProps) {
     conversation?.selected_branch || repositoryInfo?.selectedBranch;
 
   const hasRepository = !!selectedRepository;
+  // In a scratch workspace with no git provider the "No Repo Connected / No Branch"
+  // chips were noise on a phone (phone UX study, item 13).
+  const { providers } = useUserProviders();
+  const showRepoChrome = hasRepository || providers.length > 0;
 
   // Enable buttons only when conversation exists and WS is connected
   const isConversationReady = !!conversation && webSocketStatus === "OPEN";
@@ -110,6 +115,8 @@ export function GitControlBar({ onSuggestionsClick }: GitControlBarProps) {
       },
     );
   };
+
+  if (!showRepoChrome) return null;
 
   return (
     <div className="flex flex-row items-center">

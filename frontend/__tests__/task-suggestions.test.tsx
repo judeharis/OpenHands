@@ -36,7 +36,7 @@ describe("TaskSuggestions empty states", () => {
     vi.clearAllMocks();
   });
 
-  it("OSS mode + no providers → shows Git provider empty state", () => {
+  it("OSS mode + no providers → renders nothing", () => {
     (useConfig as any).mockReturnValue({
       data: { app_mode: "oss" },
     });
@@ -48,12 +48,12 @@ describe("TaskSuggestions empty states", () => {
     render(
       <MemoryRouter>
         <TaskSuggestions />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    expect(screen.getByText("TASKS$NO_GIT_PROVIDERS_TITLE")).toBeInTheDocument();
-    expect(screen.getByText("TASKS$NO_GIT_PROVIDERS_DESCRIPTION")).toBeInTheDocument();
-    expect(screen.getByText("TASKS$NO_GIT_PROVIDERS_CTA")).toBeInTheDocument();
+    // agentui: without a git provider there is nothing to suggest, so the card is not
+    // rendered at all (on a phone it only pushed the recent conversations down)
+    expect(screen.queryByTestId("task-suggestions")).toBeNull();
   });
 
   it("OSS mode + providers exist but no tasks → shows no tasks message", () => {
@@ -68,7 +68,7 @@ describe("TaskSuggestions empty states", () => {
     render(
       <MemoryRouter>
         <TaskSuggestions />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText("TASKS$NO_TASKS_AVAILABLE")).toBeInTheDocument();

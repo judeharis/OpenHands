@@ -7,6 +7,8 @@ interface UseRespondToConfirmationVariables {
   conversationUrl: string;
   sessionApiKey?: string | null;
   accept: boolean;
+  /** Why the action was rejected; the agent reads it (defaults server-side). */
+  reason?: string;
 }
 
 export const useRespondToConfirmation = () =>
@@ -17,9 +19,11 @@ export const useRespondToConfirmation = () =>
       conversationUrl,
       sessionApiKey,
       accept,
+      reason,
     }: UseRespondToConfirmationVariables) => {
       const request: ConfirmationResponseRequest = {
         accept,
+        ...(reason ? { reason } : {}),
       };
 
       return EventService.respondToConfirmation(

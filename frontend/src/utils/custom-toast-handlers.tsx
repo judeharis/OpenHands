@@ -3,7 +3,7 @@ import toast, { ToastOptions } from "react-hot-toast";
 import { calculateToastDuration } from "./toast-duration";
 import i18n from "#/i18n";
 
-const TOAST_STYLE: CSSProperties = {
+export const TOAST_STYLE: CSSProperties = {
   background: "#454545",
   border: "1px solid #717888",
   color: "#fff",
@@ -14,8 +14,10 @@ const TOAST_STYLE: CSSProperties = {
   whiteSpace: "pre-wrap",
 };
 
+// Bottom, not over the header buttons: on a phone a toast at the top covered the
+// mode switch and the ⋮ menu (phone UX study, item 14).
 export const TOAST_OPTIONS: ToastOptions = {
-  position: "top-right",
+  position: "bottom-center",
   style: TOAST_STYLE,
 };
 

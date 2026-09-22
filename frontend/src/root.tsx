@@ -29,7 +29,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
         <ScrollRestoration />
         <Scripts />
-        <Toaster />
+        <Toaster position="bottom-center" containerStyle={{ bottom: 96 }} />
         <div id="modal-portal-exit" />
       </body>
     </html>

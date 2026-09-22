@@ -134,9 +134,11 @@ export function ConversationTabs() {
   return (
     <div
       className={cn(
-        "relative w-full",
-        // one scrollable row on narrow screens: wrapping pushed the ⋮ menu onto a second line
-        "flex flex-row justify-start lg:justify-end items-center gap-4.5 flex-nowrap overflow-x-auto lg:flex-wrap",
+        // Shares one row with the title on a phone (the title truncates); a second header
+        // row cost 15 % of the viewport. Scrolls sideways there rather than wrapping the
+        // ⋮ menu onto a third line.
+        "relative w-auto max-w-[62%] shrink-0 lg:w-full lg:max-w-none",
+        "flex flex-row justify-end items-center gap-3 lg:gap-4.5 flex-nowrap overflow-x-auto lg:flex-wrap",
       )}
     >
       {visibleTabs.map(

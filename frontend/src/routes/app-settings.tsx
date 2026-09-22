@@ -7,6 +7,10 @@ import { AvailableLanguages } from "#/i18n";
 import { DEFAULT_SETTINGS } from "#/services/settings";
 import { BrandButton } from "#/components/features/settings/brand-button";
 import { SettingsSwitch } from "#/components/features/settings/settings-switch";
+import {
+  browserNotificationsEnabled,
+  setBrowserNotifications,
+} from "#/utils/notification-preference";
 import { SettingsInput } from "#/components/features/settings/settings-input";
 import { SettingsDropdownInput } from "#/components/features/settings/settings-dropdown-input";
 import { I18nKey } from "#/i18n/declaration";
@@ -283,6 +287,17 @@ function AppSettingsScreen() {
             onToggle={checkIfSoundNotificationsSwitchHasChanged}
           >
             {t(I18nKey.SETTINGS$SOUND_NOTIFICATIONS)}
+          </SettingsSwitch>
+
+          <SettingsSwitch
+            testId="enable-browser-notifications-switch"
+            name="enable-browser-notifications-switch"
+            defaultIsToggled={browserNotificationsEnabled()}
+            onToggle={(value) => {
+              setBrowserNotifications(value);
+            }}
+          >
+            {t(I18nKey.SETTINGS$BROWSER_NOTIFICATIONS)}
           </SettingsSwitch>
 
           {config?.app_mode === "saas" && (

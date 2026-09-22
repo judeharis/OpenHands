@@ -3,6 +3,7 @@ import { create } from "zustand";
 interface EventMessageState {
   submittedEventIds: number[]; // Avoid the flashing issue of the confirmation buttons
   v1SubmittedEventIds: string[]; // V1 event IDs (V1 uses string IDs)
+  acceptedFingerprints: string[]; // actions approved this session, by content; identical ones are not asked again
 }
 
 interface EventMessageStore extends EventMessageState {
@@ -10,11 +11,13 @@ interface EventMessageStore extends EventMessageState {
   removeSubmittedEventId: (id: number) => void;
   addV1SubmittedEventId: (id: string) => void;
   removeV1SubmittedEventId: (id: string) => void;
+  addAcceptedFingerprints: (fingerprints: string[]) => void;
 }
 
 export const useEventMessageStore = create<EventMessageStore>((set) => ({
   submittedEventIds: [],
   v1SubmittedEventIds: [],
+  acceptedFingerprints: [],
   addSubmittedEventId: (id: number) =>
     set((state) => ({
       submittedEventIds: [...state.submittedEventIds, id],
@@ -33,6 +36,12 @@ export const useEventMessageStore = create<EventMessageStore>((set) => ({
     set((state) => ({
       v1SubmittedEventIds: state.v1SubmittedEventIds.filter(
         (eventId) => eventId !== id,
+      ),
+    })),
+  addAcceptedFingerprints: (fingerprints: string[]) =>
+    set((state) => ({
+      acceptedFingerprints: Array.from(
+        new Set([...state.acceptedFingerprints, ...fingerprints]),
       ),
     })),
 }));
