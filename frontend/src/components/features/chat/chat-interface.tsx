@@ -9,6 +9,7 @@ import { InteractiveChatBox } from "./interactive-chat-box";
 import { AgentState } from "#/types/agent-state";
 import { useFilteredEvents } from "#/hooks/use-filtered-events";
 import { useScrollToBottom } from "#/hooks/use-scroll-to-bottom";
+import { useRememberedScroll } from "#/hooks/use-remembered-scroll";
 import { TypingIndicator } from "./typing-indicator";
 import { ChatSuggestions } from "./chat-suggestions";
 import { ScrollProvider } from "#/context/scroll-context";
@@ -190,9 +191,19 @@ export function ChatInterface() {
     setMessageToSend("");
   };
 
+  // Opening a conversation puts you back where you were reading it (or at its
+  // start), instead of jumping to the newest message.
+  const { restored } = useRememberedScroll(scrollRef, params.conversationId, {
+    ready: v1UiEvents.length + v0Events.length > 0,
+    onRestore: (follow) => {
+      setAutoScroll(follow);
+      setHitBottom(follow);
+    },
+  });
+
   // Auto-scroll to bottom when new messages arrive
   React.useEffect(() => {
-    if (autoScroll) {
+    if (restored && autoScroll) {
       scrollDomToBottom();
     }
     // Note: We intentionally exclude autoScroll from deps because we only want
@@ -204,6 +215,7 @@ export function ChatInterface() {
     optimisticUserMessage,
     modelEntriesCount,
     scrollDomToBottom,
+    restored,
   ]);
 
   // Create a ScrollProvider with the scroll hook values
