@@ -296,7 +296,7 @@
   "verdict": "auto"
  },
  {
-  "name": "planner writing a project file asks",
+  "name": "planner writing a project file runs (its tool refuses the path itself)",
   "action": {
    "tool_name": "planning_file_editor",
    "action": {
@@ -306,7 +306,7 @@
     "file_text": "{}"
    }
   },
-  "verdict": "ask"
+  "verdict": "auto"
  },
  {
   "name": "planner reading is free",

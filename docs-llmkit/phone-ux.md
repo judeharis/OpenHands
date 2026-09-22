@@ -172,3 +172,26 @@ reductions are grants the user chooses.
   and `compare.mjs <baseline> <run>` prints the deltas. Baselines are in `baselines/`.
 - Folder names are bumped per run (`tictactoe3`, `tictactoe4`, …) so the workspace state does not
   shortcut the task.
+
+## Iteration 5 — the same conversation from a terminal (2026-09-22)
+
+`agentcli` (`local-llm-kit/agentui/cli`) speaks the app-server and sandbox protocols directly:
+it lists, starts, attaches to and reopens conversations, streams the same events the phone
+sees, answers confirmations with `y` / `n reason` / `a` (a session grant, then continue) /
+`v`, has `/plan` · `/build` for plan mode, and `!cmd` for a shell in the sandbox. Both clients
+subscribe to the sandbox's event socket; whoever answers first wins and the other says so.
+
+`cli/tests/e2e/crosscheck.sh` drives both halves (the phone half is
+`tools/phone-test/cli-crosscheck.mjs`, same viewport as the runs above):
+
+| | Result |
+|---|---|
+| The CLI starts a one-file task and waits; the phone taps Continue | the CLI logs `answered_elsewhere` and moves on with the stream |
+| The phone starts the same task and waits; the CLI answers `y` | the phone's panel resolves without a tap, the file appears |
+
+Three bugs the cross-check found before it passed cleanly: the CLI's event logger died on
+the first event (a duplicate keyword); a scripted `wait` swallowed the window in which the
+confirmation was open; and after answering, the session re-entered the confirmation with
+nothing pending and spun without yielding, starving the event consumer that would have told
+it the sandbox had moved on. From the phone itself the terminal path is `ssh` to the desktop
+(Termius) and `agentcli -r last`; that leg is the user's to try, it is not in the driver.

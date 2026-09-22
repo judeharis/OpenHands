@@ -387,25 +387,8 @@ export function classify(
       suggestedGrants: [],
     };
   }
-  // The planner's editor: reading, and PLAN.md, nothing else
-  if (tool === "planning_file_editor" || kind === "PlanningFileEditorAction") {
-    const command = String(a.command || "");
-    const isPlan = path.split("/").pop() === "PLAN.md";
-    if (command === "view" || (WRITE_COMMANDS.has(command) && path && isPlan)) {
-      return {
-        verdict: "auto",
-        reason: "planner: read-only, or PLAN.md",
-        suggestedGrants: [],
-      };
-    }
-    if (WRITE_COMMANDS.has(command) && path) {
-      return {
-        verdict: "ask",
-        reason: `planner writing ${path}`,
-        suggestedGrants: suggestGrants(action, cfg),
-      };
-    }
-  }
+  // The planner's editor is allow-listed as a whole: its tool refuses every path but
+  // PLAN.md by itself; asking about a write it then refuses cost a tap for nothing.
   if (
     cfg.allowTools.includes(tool) ||
     grants.tool.includes(tool) ||
