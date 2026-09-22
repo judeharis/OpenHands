@@ -161,7 +161,7 @@ export function ConversationName() {
           />
         ) : (
           <div
-            className="text-white leading-5 min-w-0 max-w-full truncate"
+            className="text-white leading-5 min-w-0 flex-1 max-w-full truncate"
             data-testid="conversation-name-title"
             onDoubleClick={handleDoubleClick}
             title={conversation.title || ""}
@@ -172,7 +172,10 @@ export function ConversationName() {
 
         {titleMode !== "edit" && agentChip && (
           <span
-            className="text-xs text-[#A3A3A3] max-w-[150px] flex items-center gap-1 overflow-hidden"
+            // Hidden on a phone: sharing one header row with the tabs left the chip
+            // a single character ("c") and the title 53 px of 384. The same fact is
+            // on the agent button under the composer.
+            className="text-xs text-[#A3A3A3] max-w-[150px] hidden lg:flex items-center gap-1 overflow-hidden"
             title={agentChip.tooltip}
             data-testid="conversation-name-llm-model"
           >

@@ -89,7 +89,9 @@ export function AgentStatus({
   return (
     <div className={cn("flex items-center gap-1 min-w-0", className)}>
       <span
-        className="text-[11px] text-white font-normal leading-5 flex-1 min-w-0 max-w-full whitespace-normal break-words"
+        // One line, ellipsised. Wrapping this label in a row too narrow for it
+        // produced a column of single characters on a phone.
+        className="text-[11px] text-white font-normal leading-5 min-w-0 max-w-[45vw] truncate whitespace-nowrap"
         title={t(statusCode)}
       >
         {t(statusCode)}

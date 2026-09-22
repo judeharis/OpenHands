@@ -151,7 +151,10 @@ export function ConversationTabs() {
         // Shares one row with the title on a phone (the title truncates); a second header
         // row cost 15 % of the viewport. Scrolls sideways there rather than wrapping the
         // ⋮ menu onto a third line.
-        "relative w-auto max-w-[62%] shrink-0 lg:w-full lg:max-w-none",
+        // 62 % of a 384 px phone left the conversation title 65 px -- "✨ Vi...".
+        // Below sm the strip keeps under half the row and scrolls; the title,
+        // which is the only thing naming the conversation, gets the rest.
+        "relative w-auto max-w-[50%] sm:max-w-[62%] shrink-0 lg:w-full lg:max-w-none",
         "flex flex-row justify-end items-center gap-3 lg:gap-4.5 flex-nowrap overflow-x-auto lg:flex-wrap",
       )}
     >
