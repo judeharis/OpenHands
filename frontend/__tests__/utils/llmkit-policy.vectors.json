@@ -282,6 +282,7 @@
   },
   "verdict": "ask",
   "suggested": [
+   "tool:browser_*",
    "tool:browser_navigate"
   ]
  },
@@ -327,6 +328,91 @@
    "action": {
     "kind": "TerminalAction",
     "command": "sleep 2 && cat /workspace/project/tictactoe5/dev-server.log"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "stderr to /dev/null is not a write",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "ls -d /workspace/project/*/dist 2>/dev/null"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "curl to this sandbox is read-only",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "curl -s -o /dev/null -w '%{http_code}' http://localhost:8011/"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "curl to this sandbox without saving",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "curl -s http://localhost:8011/ | head -20"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "curl elsewhere asks",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "curl -s https://jude.tail0bda35.ts.net:40000/games/x/"
+   }
+  },
+  "verdict": "ask",
+  "suggested": [
+   "cmd:curl"
+  ]
+ },
+ {
+  "name": "shell grep is read-only",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "grep -i hosting /workspace/project/AGENTS.md"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "ps is read-only",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "ps aux | grep -i vite"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "a browser wildcard grant",
+  "config": {
+   "grants": [
+    "tool:browser_*"
+   ]
+  },
+  "action": {
+   "tool_name": "browser_click",
+   "action": {
+    "kind": "BrowserClickAction",
+    "index": 3
    }
   },
   "verdict": "auto"

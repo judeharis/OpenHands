@@ -173,6 +173,47 @@ reductions are grants the user chooses.
 - Folder names are bumped per run (`tictactoe3`, `tictactoe4`, …) so the workspace state does not
   shortcut the task.
 
+## Iteration 4 — plan mode, build, "publish it for my phone" (2026-09-22)
+
+Same task and follow-up as iteration 2, folder `tictactoe6`, same driver; the driver taps
+Allow for session once for file writes and once for the browser tool.
+
+| | Iteration 2 (baseline) | Iteration 4 |
+|---|---|---|
+| Taps to write the plan | **23** | **1** (the planner tried to write `package.json` with its own editor; the tool refuses that anyway — the policy no longer asks about it) |
+| Taps to build | 29 | 7 (files as one batch → Allow for session; mkdir, npm install, vite build, dev server, browser navigate → Allow, one click) |
+| Taps for the follow-up | 0 (never reached) | 16 |
+| Taps, total | **52** | **24** (2 Allow for session) |
+| Wall time | ~11 min to "finished", driver ran to its 30-min cap | **12 min 4 s** to finished, follow-up included |
+| Agent actions | – | 98, of which 74 ran without a tap |
+| Planner ready after the Plan tap | ~60 s (a second sandbox) | 0 s (same sandbox) |
+| Result | game on a dev server | game built and published under `/games/tictactoe6/`, verified in the agent's browser |
+
+Two earlier attempts at this iteration did not finish and each fixed something: the planner
+looped on an identical `grep` seventeen times (now the third identical action in a row asks),
+and the panel's never-ask-twice rule fingerprinted every browser click alike and one of its
+auto-answers raced the sandbox's state update (whole-action fingerprints; a "confirmed" cue
+that the sandbox has not honoured in 8 s goes back to the panel).
+
+**The follow-up is where the taps went**, and they split two ways:
+1. *Policy false positives* — reads that asked: `cat AGENTS.md 2>/dev/null | head` and
+   `ls …/dist 2>/dev/null` (a `>` in a `/dev/null` redirect), `ps aux | grep …`, the shell
+   `grep`, `curl -o /dev/null http://localhost:8011/` (marked *outside the workspace* because
+   of `/dev/null`, and red). All now allow-listed: redirects to `/dev/null` are stripped before
+   the check, `/dev/null` is not a path, shell `grep`/`rg`/`ps`/`ss`/`netstat` are read-only,
+   and `curl` is free when it only reads from `localhost`. Six taps.
+2. *The agent not knowing the deployment* — it started `http-server` on 8011 six times, then
+   on **40000** (the proxy's port, outside the sandbox), and curl'd the tailnet URL from inside
+   the sandbox, which cannot reach it. `AGENTS.md` now says the proxy serves `dist/` by itself,
+   never to start a server on that port, and never to fetch that URL from the sandbox.
+   The rest of the taps.
+
+One driver note: "Continue tap did not take effect" at 536 s was not a lost tap; the agent's
+`http-server` had exited and it issued the same command again as a new action (six attempts
+in the event log).
+
+Not yet measured after these two fixes; the next plan-mode run is the number to quote.
+
 ## Iteration 5 — the same conversation from a terminal (2026-09-22)
 
 `agentcli` (`local-llm-kit/agentui/cli`) speaks the app-server and sandbox protocols directly:

@@ -54,6 +54,11 @@ export const DEFAULT_ALLOW_COMMANDS = [
   "echo(\\s|$)",
   "true$",
   "sleep [0-9.]+$",
+  "grep(\\s|$)",
+  "rg(\\s|$)",
+  "ps(\\s|$)",
+  "ss(\\s|$)",
+  "netstat(\\s|$)",
   "find(\\s|$)",
   "tree(\\s|$)",
   "du(\\s|$)",
@@ -76,6 +81,23 @@ const FIND_UNSAFE = new Set([
   "-fprint0",
 ]);
 const SPLIT = /\s*(?:\|\||&&|(?<!\\);|\n|\||&)\s*/;
+// throwing output away is not writing
+const NULL_REDIRECT = /\s*(?:[12]?>>?|&>)\s*\/dev\/null|\s*2>&1/g;
+const SAFE_PATHS = new Set(["/dev/null", "/dev/stdout", "/dev/stderr"]);
+const CURL_UNSAFE = new Set([
+  "-o",
+  "-O",
+  "--output",
+  "--remote-name",
+  "-T",
+  "-d",
+  "-F",
+  "--form",
+  "-X",
+  "--request",
+  "-K",
+  "--config",
+]);
 const SHELL_UNSAFE = ["`", "$(", "<(", ">(", ">", "<"];
 const GRANT_FORMS = ["tool:", "kind:", "write:", "cmd:", "view:"];
 const WRITE_COMMANDS = new Set([
@@ -185,9 +207,10 @@ export function commandAllowed(
   cmdGrants: string[] = [],
 ): [boolean, string] {
   if (!cmd?.trim()) return [false, "empty command"];
-  const bad = SHELL_UNSAFE.find((op) => cmd.includes(op));
+  const cleaned = cmd.replace(NULL_REDIRECT, "");
+  const bad = SHELL_UNSAFE.find((op) => cleaned.includes(op));
   if (bad) return [false, `shell operator '${bad}'`];
-  const segments = cmd
+  const segments = cleaned
     .trim()
     .split(SPLIT)
     .filter((s) => s.trim());
@@ -204,7 +227,11 @@ export function commandAllowed(
     for (let t = 0; t < argv.length; t += 1) {
       const tok = argv[t];
       if (tok.startsWith("~")) return [false, "outside workspace"];
-      if (tok.startsWith("/") && !pathUnder(tok, workspace, projectDir))
+      if (
+        tok.startsWith("/") &&
+        !SAFE_PATHS.has(tok) &&
+        !pathUnder(tok, workspace, projectDir)
+      )
         return [false, "outside workspace"];
     }
     if (argv[0] === "cd") {
@@ -214,6 +241,39 @@ export function commandAllowed(
     } else {
       if (argv[0] === "find" && argv.some((a) => FIND_UNSAFE.has(a)))
         return [false, "find with an action flag"];
+      if (argv[0] === "curl") {
+        const rest = argv.filter(
+          (t, i) =>
+            !(
+              (t === "-o" || t === "--output") &&
+              argv[i + 1] === "/dev/null"
+            ) &&
+            !(
+              i > 0 &&
+              (argv[i - 1] === "-o" || argv[i - 1] === "--output") &&
+              t === "/dev/null"
+            ),
+        );
+        if (
+          rest.some(
+            (t) =>
+              CURL_UNSAFE.has(t) ||
+              t.startsWith("--data") ||
+              t.startsWith("--upload"),
+          )
+        )
+          return [false, "curl that sends or saves"];
+        const urls = argv.filter((t) => /^https?:\/\//.test(t));
+        if (
+          urls.length === 0 ||
+          !urls.every((u) =>
+            /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(u),
+          )
+        )
+          return [false, "curl beyond this sandbox"];
+        // eslint-disable-next-line no-continue
+        continue;
+      }
       const joined = argv.join(" ");
       const granted = cmdGrants.some(
         (g) => joined === g || joined.startsWith(`${g} `),
@@ -267,6 +327,8 @@ export function parseGrant(
     return `cmd:${words.join(" ")}`;
   }
   if (/\s/.test(value)) throw new Error(`${form} takes a single name`);
+  if (form === "tool:" && value.endsWith("*") && !/^[\w-]+\*$/.test(value))
+    throw new Error("a tool: wildcard is <prefix>*");
   return form + value;
 }
 
@@ -365,6 +427,7 @@ export function suggestGrants(
     }
     return out;
   }
+  if (tool.startsWith("browser_")) out.push("tool:browser_*");
   if (tool) out.push(`tool:${tool}`);
   else if (kind) out.push(`kind:${kind}`);
   return out;
@@ -389,9 +452,12 @@ export function classify(
   }
   // The planner's editor is allow-listed as a whole: its tool refuses every path but
   // PLAN.md by itself; asking about a write it then refuses cost a tap for nothing.
+  const toolGranted = grants.tool.some(
+    (g) => tool === g || (g.endsWith("*") && tool.startsWith(g.slice(0, -1))),
+  );
   if (
     cfg.allowTools.includes(tool) ||
-    grants.tool.includes(tool) ||
+    toolGranted ||
     grants.kind.includes(kind)
   ) {
     return {
