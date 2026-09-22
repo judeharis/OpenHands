@@ -29119,5 +29119,22 @@
     "de": "— the same action {{count}} times in a row; is it stuck?",
     "uk": "— the same action {{count}} times in a row; is it stuck?",
     "ca": "— the same action {{count}} times in a row; is it stuck?"
+  },
+  "CONVERSATION$BACK_TO_CHAT": {
+    "en": "Back to chat",
+    "ja": "チャットに戻る",
+    "zh-CN": "返回聊天",
+    "zh-TW": "返回聊天",
+    "ko-KR": "채팅으로 돌아가기",
+    "no": "Tilbake til chat",
+    "it": "Torna alla chat",
+    "pt": "Voltar ao chat",
+    "es": "Volver al chat",
+    "ar": "العودة إلى المحادثة",
+    "fr": "Retour au chat",
+    "tr": "Sohbete dön",
+    "de": "Zurück zum Chat",
+    "uk": "Назад до чату",
+    "ca": "Torna al xat"
   }
 }

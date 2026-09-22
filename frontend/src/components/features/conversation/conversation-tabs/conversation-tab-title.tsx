@@ -8,6 +8,9 @@ import { AgentState } from "#/types/agent-state";
 import { I18nKey } from "#/i18n/declaration";
 import { cn } from "#/utils/utils";
 import { Typography } from "#/ui/typography";
+import { useBreakpoint } from "#/hooks/use-breakpoint";
+import { useConversationId } from "#/hooks/use-conversation-id";
+import { useConversationLocalStorageState } from "#/utils/conversation-local-storage";
 
 type ConversationTabTitleProps = {
   title: string;
@@ -23,7 +26,17 @@ export function ConversationTabTitle({
   const { refetch, isFetching } = useUnifiedGetGitChanges();
   const { handleBuildPlanClick } = useHandleBuildPlanClick();
   const { curAgentState } = useAgentState();
-  const { planContent } = useConversationStore();
+  const { planContent, setHasRightPanelToggled } = useConversationStore();
+  const isMobile = useBreakpoint();
+  const { conversationId } = useConversationId();
+  const { setRightPanelShown } =
+    useConversationLocalStorageState(conversationId);
+
+  // On a phone this bar heads a full-screen sheet; this is the way back to the chat.
+  const closeSheet = () => {
+    setHasRightPanelToggled(false);
+    setRightPanelShown(false);
+  };
 
   const handleRefresh = () => {
     refetch();
@@ -36,8 +49,21 @@ export function ConversationTabTitle({
   const isBuildDisabled = isAgentRunning || !planContent;
 
   return (
-    <div className="flex flex-row items-center justify-between border-b border-[#474A54] py-2 px-3">
-      <span className="text-xs font-medium text-white">{title}</span>
+    <div className="flex flex-row items-center justify-between gap-2 border-b border-[#474A54] py-2 px-3">
+      {isMobile ? (
+        <button
+          type="button"
+          onClick={closeSheet}
+          data-testid="tab-sheet-back"
+          className="flex items-center gap-2 min-h-9 -ml-1 pr-2 text-sm font-medium text-white cursor-pointer"
+        >
+          <span aria-hidden="true">←</span>
+          {t(I18nKey.CONVERSATION$BACK_TO_CHAT)}
+          <span className="text-neutral-400">· {title}</span>
+        </button>
+      ) : (
+        <span className="text-xs font-medium text-white">{title}</span>
+      )}
       {conversationKey === "editor" && (
         <button
           type="button"
@@ -60,14 +86,25 @@ export function ConversationTabTitle({
           disabled={isBuildDisabled}
           className={cn(
             "flex items-center justify-center h-5 min-w-17 px-2 rounded bg-white transition-opacity",
+            isMobile && "h-9 px-4",
             isBuildDisabled
               ? "opacity-50 cursor-not-allowed"
               : "hover:opacity-90 cursor-pointer",
           )}
           data-testid="planner-tab-build-button"
         >
-          <Typography.Text className="text-black text-[11px] font-medium leading-5">
-            {t(I18nKey.COMMON$BUILD)} ⌘↩
+          <Typography.Text
+            className={cn(
+              "text-black font-medium leading-5",
+              isMobile ? "text-sm" : "text-[11px]",
+            )}
+          >
+            {t(I18nKey.COMMON$BUILD)}
+            {/* keyboard hint only where a keyboard is likely */}
+            <span className="hidden [@media(hover:hover)_and_(pointer:fine)]:inline">
+              {" "}
+              ⌘↩
+            </span>
           </Typography.Text>
         </button>
       )}

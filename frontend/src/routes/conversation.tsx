@@ -116,12 +116,12 @@ function AppContent() {
       <EventHandler>
         <div
           data-testid="app-route"
-          className="p-3 md:p-0 flex flex-col h-full gap-3"
+          className="p-3 md:p-0 flex flex-col h-full min-h-0 gap-3"
         >
           {/* One row at every width: on a phone the second row (tabs) cost 15 % of the
               viewport before any content; the tabs live in the ⋮ menu there. */}
           <div className="flex flex-row items-center justify-between gap-3 pt-2 lg:pt-0 min-w-0">
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 overflow-hidden">
               <ConversationNameWithStatus />
             </div>
             <ConversationTabs />

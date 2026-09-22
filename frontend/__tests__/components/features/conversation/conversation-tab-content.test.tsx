@@ -67,6 +67,24 @@ vi.mock("#/components/features/conversation/conversation-loading", () => ({
 
 describe("ConversationTabContent", () => {
   let queryClient: QueryClient;
+  const originalWidth = window.innerWidth;
+
+  // jsdom reports 1024 px, which the app's breakpoint counts as a phone; these tests
+  // describe the desktop side panel. The phone sheet has its own case at the end.
+  beforeEach(() => {
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      configurable: true,
+      value: 1280,
+    });
+  });
+  afterEach(() => {
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      configurable: true,
+      value: originalWidth,
+    });
+  });
 
   const createWrapper = () => {
     return ({ children }: { children: React.ReactNode }) => (
@@ -345,5 +363,23 @@ describe("ConversationTabContent", () => {
         expect(screen.getByTestId("editor-tab-content")).toBeInTheDocument();
       });
     });
+  });
+
+  it("on a phone the title bar is a way back to the chat", () => {
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      configurable: true,
+      value: 384,
+    });
+    useConversationStore.setState({
+      selectedTab: "planner",
+      isRightPanelShown: true,
+      hasRightPanelToggled: true,
+    } as never);
+    render(<ConversationTabContent />, { wrapper: createWrapper() });
+    const back = screen.getByTestId("tab-sheet-back");
+    expect(back.textContent).toContain("COMMON$PLANNER");
+    back.click();
+    expect(useConversationStore.getState().hasRightPanelToggled).toBe(false);
   });
 });

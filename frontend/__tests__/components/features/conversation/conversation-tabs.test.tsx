@@ -33,6 +33,16 @@ const createWrapper = (conversationId: string) => {
   );
 };
 
+// jsdom reports 1024 px, which the app's breakpoint counts as a phone (where a conversation
+// always opens on the chat); these tests describe the desktop panel behaviour.
+beforeEach(() => {
+  Object.defineProperty(window, "innerWidth", {
+    writable: true,
+    configurable: true,
+    value: 1280,
+  });
+});
+
 describe("ConversationTabs localStorage behavior", () => {
   beforeEach(() => {
     localStorage.clear();

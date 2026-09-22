@@ -6,10 +6,6 @@ import { useResizablePanels } from "#/hooks/use-resizable-panels";
 import { useConversationStore } from "#/stores/conversation-store";
 import { useBreakpoint } from "#/hooks/use-breakpoint";
 
-function getMobileChatPanelClass(isRightPanelShown: boolean) {
-  return isRightPanelShown ? "h-160" : "flex-1";
-}
-
 function getDesktopTabPanelClass(isRightPanelShown: boolean) {
   return isRightPanelShown
     ? "translate-x-0 opacity-100"
@@ -31,15 +27,17 @@ export function ConversationMain() {
   return (
     <div
       className={cn(
+        // min-h-0 down the chain: without it the thread's height pushed the composer past
+        // the screen whenever no tab panel was open (the page then scrolled as a whole).
         isMobile
-          ? "relative flex-1 flex flex-col"
+          ? "relative flex-1 min-h-0 flex flex-col overflow-hidden"
           : "h-full flex flex-col overflow-hidden",
       )}
     >
       <div
         ref={containerRef}
         className={cn(
-          "flex flex-1 overflow-hidden",
+          "flex flex-1 min-h-0 overflow-hidden",
           isMobile ? "flex-col" : "transition-all duration-300 ease-in-out",
         )}
         style={
@@ -53,7 +51,7 @@ export function ConversationMain() {
           className={cn(
             "flex flex-col bg-base overflow-hidden",
             isMobile
-              ? getMobileChatPanelClass(isRightPanelShown)
+              ? "flex-1 min-h-0"
               : "transition-all duration-300 ease-in-out",
           )}
           style={
@@ -79,12 +77,15 @@ export function ConversationMain() {
         <div
           className={cn(
             "transition-all duration-300 ease-in-out overflow-hidden",
+            // On a phone the tab (Planner, Changes, Terminal, ...) is a full-screen sheet over
+            // the chat. It used to open 640 px down the page, below the fold, so "Read more"
+            // and "View" looked like they did nothing (phone test 2026-09-22).
             isMobile
               ? cn(
-                  "absolute bottom-4 left-0 right-0 top-160",
+                  "fixed inset-0 z-40 bg-base px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]",
                   isRightPanelShown
-                    ? "h-160 translate-y-0 opacity-100"
-                    : "h-0 translate-y-full opacity-0",
+                    ? "translate-y-0 opacity-100"
+                    : "pointer-events-none translate-y-full opacity-0",
                 )
               : getDesktopTabPanelClass(isRightPanelShown),
           )}
@@ -100,7 +101,7 @@ export function ConversationMain() {
           <div
             className={cn(
               isMobile
-                ? "h-full flex flex-col gap-3 pb-2 md:pb-0 pt-2"
+                ? "h-full flex flex-col gap-3"
                 : "flex flex-col flex-1 gap-3 min-w-max h-full",
             )}
           >

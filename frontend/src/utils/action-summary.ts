@@ -47,7 +47,7 @@ function djb2(text: string): string {
 /** Same tool, same arguments => same fingerprint; used to not ask twice. The whole
  * action counts (a click on another square is another action), file contents hashed. */
 export function fingerprintAction(event: ActionEvent): string {
-  const a = { ...(event.action as Record<string, unknown>) };
+  const a = { ...(event.action as unknown as Record<string, unknown>) };
   ["file_text", "old_str", "new_str"].forEach((k) => {
     if (typeof a[k] === "string") a[k] = djb2(a[k] as string);
   });

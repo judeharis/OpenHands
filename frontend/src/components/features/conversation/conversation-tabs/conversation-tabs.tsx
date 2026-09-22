@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import TerminalIcon from "#/icons/terminal.svg?react";
 import GlobeIcon from "#/icons/globe.svg?react";
@@ -18,6 +18,7 @@ import { ConversationTabsContextMenu } from "./conversation-tabs-context-menu";
 import { useConversationId } from "#/hooks/use-conversation-id";
 import { useSelectConversationTab } from "#/hooks/use-select-conversation-tab";
 import { useTaskList } from "#/hooks/use-task-list";
+import { useBreakpoint } from "#/hooks/use-breakpoint";
 
 export function ConversationTabs() {
   const { conversationId } = useConversationId();
@@ -25,8 +26,21 @@ export function ConversationTabs() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const { state: persistedState } =
+  const { state: persistedState, setRightPanelShown } =
     useConversationLocalStorageState(conversationId);
+  const isMobile = useBreakpoint();
+
+  // On a phone the panel is a full-screen sheet, so a conversation must open on the chat:
+  // the remembered "panel shown" (a side panel on a desktop, and true by default) would
+  // otherwise cover it on arrival. Reset once per arrival; taps open the sheet as usual.
+  const arrivedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isMobile || arrivedFor.current === conversationId) return;
+    arrivedFor.current = conversationId;
+    if (persistedState.rightPanelShown) setRightPanelShown(false);
+    setHasRightPanelToggled(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile, conversationId]);
 
   const { hasTaskList } = useTaskList();
 
