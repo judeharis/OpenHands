@@ -1,5 +1,5 @@
 /**
- * TypeScript port of local-llm-kit's llmkit_policy.core: what an OpenHands action
+ * TypeScript port of jentic's llmkit_policy.core: what an OpenHands action
  * needs before it runs. The sandbox decides for real (LlmkitAnalyzer); the UI uses
  * this copy to colour the confirmation panel, suggest "allow for session" grants and
  * explain a deny. The two are kept in step by the shared vectors file

@@ -121,7 +121,7 @@ that cannot hurt anything.
 
 ## Iteration 3 — reads run, writes ask (2026-09-22)
 
-What changed since the two runs above (all in `local-llm-kit/jentic/`, this fork is now its
+What changed since the two runs above (all in `jentic/jentic/`, this fork is now its
 submodule): the sandbox runs `llmkit_policy`, a security analyzer that rates read-only tools,
 file views and an allow-list of terminal commands LOW (they run), anything outside `/workspace`
 HIGH, everything else MEDIUM (it asks) under `ConfirmRisky(MEDIUM)`; the app installs it in every
@@ -231,7 +231,7 @@ that takes two seconds fell between two 2.5 s polls, so the driver never saw the
 
 ## Iteration 5 — the same conversation from a terminal (2026-09-22)
 
-`jentic-cli` (`local-llm-kit/jentic/cli`) speaks the app-server and sandbox protocols directly:
+`jentic-cli` (`jentic/jentic/cli`) speaks the app-server and sandbox protocols directly:
 it lists, starts, attaches to and reopens conversations, streams the same events the phone
 sees, answers confirmations with `y` / `n reason` / `a` (a session grant, then continue) /
 `v`, has `/plan` · `/build` for plan mode, and `!cmd` for a shell in the sandbox. Both clients
