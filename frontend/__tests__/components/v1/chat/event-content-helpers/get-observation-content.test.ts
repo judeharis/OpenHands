@@ -3,6 +3,7 @@ import { getObservationContent } from "#/components/v1/chat/event-content-helper
 import { ObservationEvent } from "#/types/v1/core";
 import {
   BrowserObservation,
+  FileEditorObservation,
   GlobObservation,
   GrepObservation,
 } from "#/types/v1/core/base/observation";
@@ -301,5 +302,99 @@ describe("getObservationContent - GrepObservation", () => {
     // Assert
     expect(result).toContain("**Error:**");
     expect(result).toContain("Invalid regex pattern");
+  });
+});
+
+describe("getObservationContent - FileEditorObservation", () => {
+  const editorEvent = (
+    observation: Record<string, unknown>,
+  ): ObservationEvent<FileEditorObservation> =>
+    ({
+      id: "test-id",
+      timestamp: "2024-01-01T00:00:00Z",
+      source: "environment",
+      tool_name: "file_editor",
+      tool_call_id: "call-id",
+      action_id: "action-id",
+      observation: {
+        kind: "FileEditorObservation",
+        command: "create",
+        error: null,
+        output: "",
+        ...observation,
+      },
+    }) as unknown as ObservationEvent<FileEditorObservation>;
+
+  // The editor's text is literal, not markdown: unfenced, react-markdown read the "__" in
+  // __init__.py as emphasis and printed a bold "init.py" to the user.
+  it("fences the tool's output so a path is not read as markdown", () => {
+    const result = getObservationContent(
+      editorEvent({
+        output:
+          "Invalid `path` parameter: /workspace/project/tests/__init__.py. File already exists.",
+      }),
+    );
+
+    expect(result).toContain("__init__.py");
+    expect(result.startsWith("```")).toBe(true);
+    expect(result.endsWith("```")).toBe(true);
+  });
+
+  it("fences the error message too, keeping its label", () => {
+    const result = getObservationContent(
+      editorEvent({ error: "No such file: /workspace/project/__main__.py" }),
+    );
+
+    expect(result).toContain("**Error:**");
+    expect(result).toContain("__main__.py");
+    expect(result).toContain("```");
+  });
+});
+
+describe("getObservationContent - BrowserObservation output size", () => {
+  const dom = (n: number) =>
+    JSON.stringify(
+      Array.from({ length: n }, (_, i) => ({ index: i, tag: "span", text: "" })),
+      null,
+      1,
+    );
+
+  const browserEvent = (output: string): ObservationEvent<BrowserObservation> =>
+    ({
+      id: "id",
+      timestamp: "2024-01-01T00:00:00Z",
+      source: "environment",
+      tool_name: "browser",
+      tool_call_id: "call",
+      action_id: "action",
+      observation: {
+        kind: "BrowserObservation",
+        output,
+        error: null,
+        screenshot_data: null,
+      },
+    }) as unknown as ObservationEvent<BrowserObservation>;
+
+  // What the user saw: thousands of {"index","tag","text"} objects printed into the chat.
+  it("fences the page dump so it collapses instead of filling the conversation", () => {
+    const result = getObservationContent(browserEvent(dom(300)));
+    expect(result).toContain("```");
+    expect(result.indexOf("```")).toBeLessThan(result.indexOf('"tag"'));
+  });
+
+  it("says how many elements there are, so the block need not be opened", () => {
+    expect(getObservationContent(browserEvent(dom(300)))).toContain("300 page elements");
+  });
+
+  it("leaves a short, ordinary output without an element count", () => {
+    const result = getObservationContent(browserEvent("Navigated to example.com"));
+    expect(result).toContain("Navigated to example.com");
+    expect(result).not.toContain("page elements");
+  });
+
+  it("closes the fence when it truncates, so the rest is not swallowed as code", () => {
+    const result = getObservationContent(browserEvent(dom(5000)));
+    expect(result).toContain("...(truncated)");
+    expect((result.match(/```/g) || []).length % 2).toBe(0);
   });
 });

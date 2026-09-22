@@ -39,7 +39,11 @@ const getEditObservationContent = (
   if (successMessage) {
     return `\`\`\`diff\n${event.extras.diff}\n\`\`\``; // Content is already truncated by the ACI
   }
-  return event.content;
+  // The failure path is the ACI's own error text and it is full of paths. Handed to the
+  // markdown renderer raw -- the only branch here that did -- "__init__.py" came out as a
+  // bold "init.py", and any *, _ or # in a path or a message would go the same way.
+  // Fenced, like every other branch in this file.
+  return `\`\`\`\n${event.content}\n\`\`\``;
 };
 
 const getBrowseObservationContent = (event: BrowseObservation) => {

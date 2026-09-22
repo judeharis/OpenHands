@@ -23,7 +23,9 @@ const getFileEditorObservationContent = (
   const { observation } = event;
 
   if (observation.error) {
-    return `**Error:**\n${observation.error}`;
+    // Fenced: the message is the editor tool's own text, full of paths, and markdown
+    // turned "__init__.py" into a bold "init.py". The label stays markdown on purpose.
+    return `**Error:**\n\`\`\`\n${observation.error}\n\`\`\``;
   }
 
   // Extract text content from the observation if it exists
@@ -51,8 +53,11 @@ const getFileEditorObservationContent = (
     return `\`\`\`\n${displayContent}\n\`\`\``;
   }
 
-  // For other commands, prefer content if available, otherwise use output
-  return textContent || observation.output;
+  // For other commands, prefer content if available, otherwise use output. Fenced for the
+  // same reason as the view branch above: this is the tool's literal text, not markdown --
+  // it is where "Invalid `path` parameter: .../__init__.py" reaches the screen, and
+  // unfenced the "__init__" came out bold.
+  return `\`\`\`\n${textContent || observation.output}\n\`\`\``;
 };
 
 // Command Observations
@@ -105,18 +110,45 @@ const getBrowserObservationContent = (
   let contentDetails = "";
 
   if (observation.error) {
-    contentDetails += `**Error:**\n${observation.error}`;
+    contentDetails += `**Error:**\n\`\`\`\n${observation.error}\n\`\`\``;
   } else if (textContent) {
-    contentDetails += `**Output:**\n${textContent}`;
+    // The browser tools answer with the page's whole element list -- thousands of
+    // {"index", "tag", "text"} objects. Unfenced it was printed straight into the
+    // conversation as a wall of JSON that buries everything around it. Fenced, it becomes
+    // a code block, which collapses to a few lines with a button; and when it is
+    // recognisably that element list, the heading says how big it is so the block does
+    // not have to be opened to find out.
+    const heading = describeBrowserOutput(textContent);
+    contentDetails += `**Output:**${heading ? ` ${heading}` : ""}\n${
+      needsFence(textContent) ? `\`\`\`\n${textContent}\n\`\`\`` : textContent
+    }`;
   } else {
     contentDetails += "Browser action completed successfully.";
   }
 
   if (contentDetails.length > MAX_CONTENT_LENGTH) {
-    contentDetails = `${contentDetails.slice(0, MAX_CONTENT_LENGTH)}...(truncated)`;
+    // Keep the fence closed when cutting, or the rest of the message renders as code.
+    const cut = contentDetails.slice(0, MAX_CONTENT_LENGTH);
+    const fenced = (cut.match(/```/g) || []).length % 2 === 1;
+    contentDetails = `${cut}\n...(truncated)${fenced ? "\n```" : ""}`;
   }
 
   return contentDetails;
+};
+
+/**
+ * Fence anything that is not a short, plain sentence. Long or multi-line output is the
+ * wall-of-JSON case; and any output carrying markdown's own characters would otherwise be
+ * reinterpreted -- a URL with two underscores in it comes out bold and wrong.
+ * "Page loaded successfully" stays a sentence.
+ */
+export const needsFence = (text: string): boolean =>
+  text.includes("\n") || text.length > 120 || /[_*`#|<>]/.test(text);
+
+/** "9,112 page elements", when the output is the browser's element list. */
+export const describeBrowserOutput = (text: string): string | null => {
+  const elements = (text.match(/"tag":/g) || []).length;
+  return elements >= 20 ? `${elements.toLocaleString()} page elements` : null;
 };
 
 const getMCPToolObservationContent = (
