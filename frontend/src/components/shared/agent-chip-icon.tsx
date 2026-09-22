@@ -1,4 +1,3 @@
-import OpenHandsLogoWhite from "#/assets/branding/openhands-logo-white.svg?react";
 import ClaudeMark from "#/assets/branding/claude-mark.svg?react";
 import OpenAIMark from "#/assets/branding/openai-mark.svg?react";
 import GeminiMark from "#/assets/branding/gemini-mark.svg?react";
@@ -27,9 +26,9 @@ export function AgentChipIcon({
 }: AgentChipIconProps) {
   switch (kind) {
     case "openhands":
-      return (
-        <OpenHandsLogoWhite width={SIZE} height={SIZE} className={className} />
-      );
+      // The native agent is this app itself, so it carries no separate brand
+      // mark here: the chip reads as the model alias ("chat", "coder").
+      return null;
     case "acp-claude-code":
       return <ClaudeMark width={SIZE} height={SIZE} className={className} />;
     case "acp-codex":

@@ -1,19 +1,17 @@
 import { NavLink } from "react-router";
-import { useTranslation } from "react-i18next";
-import OpenHandsLogo from "#/assets/branding/openhands-logo.svg?react";
-import { I18nKey } from "#/i18n/declaration";
 import { StyledTooltip } from "#/components/shared/buttons/styled-tooltip";
 
+// This fork ships as jentic, so the header wears its own wordmark rather than
+// upstream's logo. Same link target (home) and same slot in the sidebar.
+const WORDMARK = "jentic";
+
 export function OpenHandsLogoButton() {
-  const { t } = useTranslation();
-
-  const tooltipText = t(I18nKey.BRANDING$OPENHANDS);
-  const ariaLabel = t(I18nKey.BRANDING$OPENHANDS_LOGO);
-
   return (
-    <StyledTooltip content={tooltipText}>
-      <NavLink to="/" aria-label={ariaLabel}>
-        <OpenHandsLogo width={46} height={30} />
+    <StyledTooltip content={WORDMARK}>
+      <NavLink to="/" aria-label={WORDMARK}>
+        <span className="text-white text-[17px] leading-6 font-semibold tracking-tight">
+          {WORDMARK}
+        </span>
       </NavLink>
     </StyledTooltip>
   );

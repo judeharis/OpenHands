@@ -16,6 +16,7 @@ import { usePermission } from "./organizations/use-permissions";
 import { useOrgTypeAndAccess } from "./use-org-type-and-access";
 import { useSettings } from "./query/use-settings";
 import { I18nKey } from "#/i18n/declaration";
+import { useJenticSurfaces } from "#/hooks/use-jentic-surfaces";
 
 // Rendered navigation item types
 export type SettingsNavRenderedItem =
@@ -44,6 +45,7 @@ const SECTION_HEADERS: Partial<Record<SettingsNavSection, I18nKey>> = {
  */
 export function useSettingsNavItems(): SettingsNavRenderedItem[] {
   const { data: config } = useConfig();
+  const surfaces = useJenticSurfaces();
   const { data: user } = useMe();
   const { data: settings } = useSettings();
   const userRole: OrganizationUserRole = user?.role ?? "member";
@@ -65,6 +67,16 @@ export function useSettingsNavItems(): SettingsNavRenderedItem[] {
     : null;
 
   let items = isSaasMode ? [...SAAS_NAV_ITEMS] : [...OSS_NAV_ITEMS];
+
+  // jentic: hide settings pages for things that are not configured here. The
+  // integrations page only lists git providers, and verification needs a server
+  // that can send email; both were dead links in the account menu.
+  if (!surfaces.git) {
+    items = items.filter((item) => item.to !== "/settings/integrations");
+  }
+  if (!surfaces.verification) {
+    items = items.filter((item) => item.to !== "/settings/verification");
+  }
 
   // First apply feature flag-based hiding
   items = items.filter((item) => !isSettingsPageHidden(item.to, featureFlags));

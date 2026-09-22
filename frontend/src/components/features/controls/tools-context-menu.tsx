@@ -101,32 +101,34 @@ export function ToolsContextMenu({
         </div>
       )}
 
-      {/* Macros */}
-      <div className="relative group/macros">
-        <ContextMenuListItem
-          testId="macros-button"
-          onClick={() => handleSubmenuClick("macros")}
-          className={contextMenuListItemClassName}
-        >
-          <ToolsContextMenuIconText
-            icon={<SettingsIcon width={16} height={16} />}
-            text={t(I18nKey.COMMON$MACROS)}
-            rightIcon={<CarretRightFillIcon width={10} height={10} />}
-            className={CONTEXT_MENU_ICON_TEXT_CLASSNAME}
-          />
-        </ContextMenuListItem>
-        <div
-          className={cn(
-            "absolute left-full top-[-4px] z-60 opacity-0 invisible pointer-events-none transition-all duration-200 ml-[1px]",
-            "group-hover/macros:opacity-100 group-hover/macros:visible group-hover/macros:pointer-events-auto",
-            "hover:opacity-100 hover:visible hover:pointer-events-auto",
-            activeSubmenu === "macros" &&
-              "opacity-100 visible pointer-events-auto",
-          )}
-        >
-          <MacrosSubmenu onClose={handleClose} />
+      {/* Macros: repository tasks, so they need a provider like Git Tools do */}
+      {providersAreSet && (
+        <div className="relative group/macros">
+          <ContextMenuListItem
+            testId="macros-button"
+            onClick={() => handleSubmenuClick("macros")}
+            className={contextMenuListItemClassName}
+          >
+            <ToolsContextMenuIconText
+              icon={<SettingsIcon width={16} height={16} />}
+              text={t(I18nKey.COMMON$MACROS)}
+              rightIcon={<CarretRightFillIcon width={10} height={10} />}
+              className={CONTEXT_MENU_ICON_TEXT_CLASSNAME}
+            />
+          </ContextMenuListItem>
+          <div
+            className={cn(
+              "absolute left-full top-[-4px] z-60 opacity-0 invisible pointer-events-none transition-all duration-200 ml-[1px]",
+              "group-hover/macros:opacity-100 group-hover/macros:visible group-hover/macros:pointer-events-auto",
+              "hover:opacity-100 hover:visible hover:pointer-events-auto",
+              activeSubmenu === "macros" &&
+                "opacity-100 visible pointer-events-auto",
+            )}
+          >
+            <MacrosSubmenu onClose={handleClose} />
+          </div>
         </div>
-      </div>
+      )}
 
       {shouldShowAgentTools && <Divider />}
 

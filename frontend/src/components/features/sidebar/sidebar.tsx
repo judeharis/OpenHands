@@ -15,12 +15,14 @@ import { useConfig } from "#/hooks/query/use-config";
 import { displayErrorToast } from "#/utils/custom-toast-handlers";
 import { I18nKey } from "#/i18n/declaration";
 import { cn } from "#/utils/utils";
+import { useJenticSurfaces } from "#/hooks/use-jentic-surfaces";
 
 export function Sidebar() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const user = useGitUser();
   const { data: config } = useConfig();
+  const surfaces = useJenticSurfaces();
   const {
     data: settings,
     error: settingsError,
@@ -88,7 +90,7 @@ export function Sidebar() {
               }
               disabled={settings?.email_verified === false}
             />
-            {config?.feature_flags?.enable_automations && (
+            {surfaces.automations && (
               <AutomationsButton
                 disabled={settings?.email_verified === false}
               />

@@ -5,6 +5,7 @@ import { I18nKey } from "#/i18n/declaration";
 import BuildIt from "#/icons/build-it.svg?react";
 import { SUGGESTIONS } from "#/utils/suggestions";
 import { useConversationStore } from "#/stores/conversation-store";
+import { useJenticSurfaces } from "#/hooks/use-jentic-surfaces";
 
 interface ChatSuggestionsProps {
   onSuggestionsClick: (value: string) => void;
@@ -13,6 +14,7 @@ interface ChatSuggestionsProps {
 export function ChatSuggestions({ onSuggestionsClick }: ChatSuggestionsProps) {
   const { t } = useTranslation();
   const { shouldHideSuggestions } = useConversationStore();
+  const surfaces = useJenticSurfaces();
 
   return (
     <AnimatePresence>
@@ -31,15 +33,19 @@ export function ChatSuggestions({ onSuggestionsClick }: ChatSuggestionsProps) {
               {t(I18nKey.LANDING$TITLE)}
             </span>
           </div>
-          <Suggestions
-            suggestions={Object.entries(SUGGESTIONS.repo)
-              .slice(0, 4)
-              .map(([label, value]) => ({
-                label,
-                value,
-              }))}
-            onSuggestionClick={onSuggestionsClick}
-          />
+          {/* "Increase test coverage", "Auto-merge PRs" … are repository
+              macros; with no git provider they cannot do anything. */}
+          {surfaces.git && (
+            <Suggestions
+              suggestions={Object.entries(SUGGESTIONS.repo)
+                .slice(0, 4)
+                .map(([label, value]) => ({
+                  label,
+                  value,
+                }))}
+              onSuggestionClick={onSuggestionsClick}
+            />
+          )}
         </motion.div>
       )}
     </AnimatePresence>

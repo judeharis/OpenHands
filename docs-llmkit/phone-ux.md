@@ -251,3 +251,29 @@ confirmation was open; and after answering, the session re-entered the confirmat
 nothing pending and spun without yielding, starving the event consumer that would have told
 it the sandbox had moved on. From the phone itself the terminal path is `ssh` to the desktop
 (Termius) and `jentic-cli -r last`; that leg is the user's to try, it is not in the driver.
+
+## 2026-09-22 — hide what is not configured; a home screen you can type into
+
+The home screen was a product landing page: a docs banner, "Let's Start Building!", an
+"Open Repository" card for GitHub/GitLab/Bitbucket/Azure, suggested repo tasks, and a button
+that had to be found below the fold. None of it works here — `providers_configured: []`,
+`email_enabled: false` — and on a phone it was the whole screen.
+
+- **`useJenticSurfaces()`** (`src/hooks/use-jentic-surfaces.ts`) is the single place that says
+  what this deployment can use: `git` (a provider is connected), `verification` (the server can
+  send email), `automations` (nothing schedules them yet), `upstreamDocs` (this fork is not that
+  product). Every gate reads from it, so configuring a provider brings its surfaces back.
+- **Hidden until configured:** repo connector, suggested repo tasks, repo macros in the Tools
+  menu and on the empty-conversation screen, "No Repository" chips, the Automations button, the
+  Integrations and Verification settings pages, and the link to upstream's docs.
+- **Home is now greeting → composer → recents.** Typing in the composer creates the conversation
+  *with* that first message (`useCreateConversation({ query })`), so the agent starts working on
+  the first tap instead of: button → wait for a sandbox → type into an empty thread. "Start an
+  empty conversation" keeps the old path (and the old test id).
+- **Brand:** title and PWA manifest are "Jentic", the header wears a `jentic` wordmark, and the
+  native agent chip drops the OpenHands mark (the chip reads as the model alias: `chat`).
+  The PWA icons are still upstream's artwork.
+- Verified at 384×780: composer in view at y=183, no repo/task/automations/docs surfaces, account
+  menu down to Account · Agent · LLM · Condenser · MCP · Skills · Application · Secrets, and a
+  message typed on the home screen produced `jentic-home.txt` after one confirmation tap
+  (`tools/phone-test/check-home.mjs`).

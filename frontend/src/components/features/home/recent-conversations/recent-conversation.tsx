@@ -12,6 +12,7 @@ import RepoForkedIcon from "#/icons/repo-forked.svg?react";
 import { Typography } from "#/ui/typography";
 import { resolveAgentChip } from "#/utils/agent-display-label";
 import { AgentChipIcon } from "#/components/shared/agent-chip-icon";
+import { useJenticSurfaces } from "#/hooks/use-jentic-surfaces";
 
 interface RecentConversationProps {
   conversation: V1AppConversation;
@@ -20,6 +21,7 @@ interface RecentConversationProps {
 export function RecentConversation({ conversation }: RecentConversationProps) {
   const { t } = useTranslation();
   const { data: config } = useConfig();
+  const surfaces = useJenticSurfaces();
 
   const hasRepository =
     conversation.selected_repository && conversation.selected_branch;
@@ -56,12 +58,14 @@ export function RecentConversation({ conversation }: RecentConversationProps) {
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-1">
-              <RepoForkedIcon width={12} height={12} color="#A3A3A3" />
-              <span className="max-w-[124px] truncate">
-                {t(I18nKey.COMMON$NO_REPOSITORY)}
-              </span>
-            </div>
+            surfaces.git && (
+              <div className="flex items-center gap-1">
+                <RepoForkedIcon width={12} height={12} color="#A3A3A3" />
+                <span className="max-w-[124px] truncate">
+                  {t(I18nKey.COMMON$NO_REPOSITORY)}
+                </span>
+              </div>
+            )
           )}
           {hasRepository ? (
             <div className="flex items-center gap-1">

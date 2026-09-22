@@ -18,6 +18,7 @@ import { useBreakpoint } from "#/hooks/use-breakpoint";
 import { SettingsNavHeader } from "../settings/settings-nav-header";
 import { SettingsNavDivider } from "../settings/settings-nav-divider";
 import { useAppMode } from "#/hooks/use-app-mode";
+import { useJenticSurfaces } from "#/hooks/use-jentic-surfaces";
 
 // Shared className for context menu list items in the user context menu
 const contextMenuListItemClassName = cn(
@@ -42,6 +43,7 @@ export function UserContextMenu({
   const shouldHideSelector = useShouldHideOrgSelector();
   const isMobile = useBreakpoint(768);
   const { isSaas, isEnterpriseCloud } = useAppMode();
+  const surfaces = useJenticSurfaces();
 
   // Keep all nav items including headers and dividers for proper section grouping
   const navItems = settingsNavItems;
@@ -142,18 +144,20 @@ export function UserContextMenu({
             })}
           </div>
 
-          <SettingsNavDivider className="my-1.5" />
+          {surfaces.upstreamDocs && <SettingsNavDivider className="my-1.5" />}
 
-          <a
-            href="https://docs.openhands.dev"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onClose}
-            className="flex items-center gap-2 p-2 cursor-pointer hover:bg-white/10 hover:text-white rounded w-full text-xs"
-          >
-            <DocumentIcon className="text-white" width={16} height={16} />
-            {t(I18nKey.SIDEBAR$DOCS)}
-          </a>
+          {surfaces.upstreamDocs && (
+            <a
+              href="https://docs.openhands.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onClose}
+              className="flex items-center gap-2 p-2 cursor-pointer hover:bg-white/10 hover:text-white rounded w-full text-xs"
+            >
+              <DocumentIcon className="text-white" width={16} height={16} />
+              {t(I18nKey.SIDEBAR$DOCS)}
+            </a>
+          )}
 
           {/* Only show logout in saas mode - oss mode has no session to invalidate */}
           {isSaas && (

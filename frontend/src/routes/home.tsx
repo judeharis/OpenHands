@@ -1,65 +1,49 @@
 import React from "react";
 import { PrefetchPageLinks } from "react-router";
-import { HomeHeader } from "#/components/features/home/home-header/home-header";
 import { RepoConnector } from "#/components/features/home/repo-connector";
 import { TaskSuggestions } from "#/components/features/home/tasks/task-suggestions";
 import { GitRepository } from "#/types/git";
-import { NewConversation } from "#/components/features/home/new-conversation/new-conversation";
+import { HomeGreeting } from "#/components/features/home/home-greeting";
+import { HomeComposer } from "#/components/features/home/home-composer";
 import { RecentConversations } from "#/components/features/home/recent-conversations/recent-conversations";
-import { HomepageCTA } from "#/components/features/home/homepage-cta";
-import { isCTADismissed } from "#/utils/local-storage";
-import { useAppMode } from "#/hooks/use-app-mode";
+import { useJenticSurfaces } from "#/hooks/use-jentic-surfaces";
 
 <PrefetchPageLinks page="/conversations/:conversationId" />;
 
+/**
+ * Greeting, composer, recents — and nothing that is not configured. The repo
+ * cards and suggested repo tasks need a git provider; without one they were the
+ * whole screen on a phone and pushed the only usable control below the fold.
+ */
 function HomeScreen() {
-  const { isEnterpriseCloud } = useAppMode();
+  const { git } = useJenticSurfaces();
   const [selectedRepo, setSelectedRepo] = React.useState<GitRepository | null>(
     null,
-  );
-
-  const [shouldShowCTA, setShouldShowCTA] = React.useState(
-    () => !isCTADismissed("homepage"),
   );
 
   return (
     <div
       data-testid="home-screen"
-      className="px-0 pt-4 bg-transparent h-full flex flex-col pt-[35px] overflow-y-auto rounded-xl lg:px-[42px] lg:pt-[42px] custom-scrollbar-always"
+      className="h-full overflow-y-auto custom-scrollbar-always bg-transparent rounded-xl flex flex-col items-center px-4 pt-8 pb-6 lg:px-[42px] lg:pt-[42px]"
     >
-      <HomeHeader />
+      <div className="w-full flex flex-col gap-6 lg:max-w-[703px]">
+        <HomeGreeting />
+        <HomeComposer />
 
-      <div className="pt-[25px] flex justify-center">
-        <div
-          className="flex flex-col gap-5 px-6 sm:max-w-full sm:min-w-full md:flex-row lg:px-0 lg:max-w-[703px] lg:min-w-[703px]"
-          data-testid="home-screen-new-conversation-section"
-        >
-          {/* On a phone the repo card pushed "Start from Scratch" below the
-              fold; it is the common case here, so it goes first on narrow screens. */}
-          <div className="order-2 md:order-1 md:flex-1 flex">
+        {git && (
+          <div
+            className="flex flex-col gap-5 md:flex-row"
+            data-testid="home-screen-new-conversation-section"
+          >
             <RepoConnector onRepoSelection={(repo) => setSelectedRepo(repo)} />
+            <TaskSuggestions filterFor={selectedRepo} />
           </div>
-          <div className="order-1 md:order-2 md:flex-1 flex">
-            <NewConversation />
-          </div>
-        </div>
-      </div>
+        )}
 
-      <div className="pt-4 flex sm:justify-start md:justify-center">
-        <div
-          className="flex flex-col gap-5 px-6 md:flex-row min-w-full md:max-w-full lg:px-0 lg:max-w-[703px] lg:min-w-[703px]"
-          data-testid="home-screen-recent-conversations-section"
-        >
+        <div data-testid="home-screen-recent-conversations-section">
           <RecentConversations />
-          <TaskSuggestions filterFor={selectedRepo} />
         </div>
       </div>
-
-      {isEnterpriseCloud && shouldShowCTA && (
-        <div className="fixed bottom-4 right-8 z-50 md:bottom-6 md:right-12">
-          <HomepageCTA setShouldShowCTA={setShouldShowCTA} />
-        </div>
-      )}
     </div>
   );
 }
