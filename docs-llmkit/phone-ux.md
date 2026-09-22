@@ -212,7 +212,22 @@ One driver note: "Continue tap did not take effect" at 536 s was not a lost tap;
 `http-server` had exited and it issued the same command again as a new action (six attempts
 in the event log).
 
-Not yet measured after these two fixes; the next plan-mode run is the number to quote.
+### Iteration 4b — the same run after those two fixes
+
+| | Iteration 2 (baseline) | Iteration 4 | **Iteration 4b** |
+|---|---|---|---|
+| Taps to write the plan | 23 | 1 | **0** |
+| Taps to build | 29 | 7 | **6** (file batch → Allow for session; mkdir, npm install, vite build, dev server; browser → Allow for session, now the whole `browser_*` family) |
+| Taps for the follow-up | – | 16 | **0** — the agent answered in two seconds: "the static build is already in `dist/`, which the proxy serves automatically", with the phone URL |
+| Taps, total | **52** | 24 | **6** (2 Allow for session) |
+| Wall time, task → last answer | ~11 min + cap | 12 min 4 s | **6 min 12 s** |
+| Agent actions | – | 98 (74 unprompted) | 64 (58 unprompted; 33 of them the planner's, all free) |
+| Result | dev server | published | published, `https://<host>:40000/games/tictactoe7/` answers 200 |
+
+The remaining six are the commands a `cmd:` grant would take (`mkdir`, `npm install`, `npm run
+build`, `npm run dev`) plus the two Allows. One driver bug surfaced and was fixed: an answer
+that takes two seconds fell between two 2.5 s polls, so the driver never saw the agent
+"running" after the follow-up and waited for its cap; the numbers above are from the event log.
 
 ## Iteration 5 — the same conversation from a terminal (2026-09-22)
 

@@ -48,12 +48,15 @@ if (mode === "plan") {
 }
 await input.tap(); await page.keyboard.type(task, { delay: 12 }); await shot(page, "typed");
 await page.getByTestId("submit-button").tap(); note("action", "sent task");
-let sentFollowUp = false; let sawRunning = false; let nudged = false; const allowedKinds = new Set(); let approvals = 0, allows = 0, lastApprovalAt = Date.now(), scrolls = 0, missingPanel = 0, built = false, finalText = "";
+let sentFollowUp = false; let sawRunning = false; let nudged = false; let sentAt = Date.now(); const allowedKinds = new Set(); let approvals = 0, allows = 0, lastApprovalAt = Date.now(), scrolls = 0, missingPanel = 0, built = false, finalText = "";
 const deadline = Date.now() + 30 * 60 * 1000;
 while (Date.now() < deadline) {
   await sleep(2500);
   const st = await status(cid);
   if (st === "running" || st === "waiting_for_confirmation") sawRunning = true;
+  // An answer that takes two seconds (the follow-up "publish it" once AGENTS.md explains the
+  // proxy) can fall between two polls; after 8 s a finished status counts even so.
+  if (!sawRunning && sentAt && Date.now() - sentAt > 8000 && (st === "finished" || st === "idle")) sawRunning = true;
   if (!sawRunning) continue; // idle before the agent has even started is not "done"
   const panel = page.getByTestId("v1-confirmation-panel");
   const visible = await panel.isVisible().catch(() => false);
@@ -85,9 +88,9 @@ while (Date.now() < deadline) {
     continue;
   }
   if (st === "finished" || st === "idle") {
-    if (mode === "plan" && !built) { const build = page.getByTestId("plan-preview-build-button"); if (await build.isVisible().catch(()=>false)) { await shot(page, "plan-done"); await build.scrollIntoViewIfNeeded(); await build.tap(); built = true; note("action", "tapped Build on the plan"); sawRunning = false; await sleep(5000); continue; } }
+    if (mode === "plan" && !built) { const build = page.getByTestId("plan-preview-build-button"); if (await build.isVisible().catch(()=>false)) { await shot(page, "plan-done"); await build.scrollIntoViewIfNeeded(); await build.tap(); built = true; note("action", "tapped Build on the plan"); sawRunning = false; sentAt = Date.now(); await sleep(5000); continue; } }
     await sleep(6000); if (["finished","idle"].includes(await status(cid))) {
-      if (followUp && !sentFollowUp) { sentFollowUp = true; await shot(page, "first-done"); await input.tap(); await page.keyboard.type(followUp, { delay: 12 }); await page.getByTestId("submit-button").tap(); note("action", "sent follow-up"); sawRunning = false; await sleep(5000); continue; }
+      if (followUp && !sentFollowUp) { sentFollowUp = true; await shot(page, "first-done"); await input.tap(); await page.keyboard.type(followUp, { delay: 12 }); await page.getByTestId("submit-button").tap(); note("action", "sent follow-up"); sawRunning = false; sentAt = Date.now(); await sleep(5000); continue; }
       await shot(page, "final"); finalText = (await page.locator("body").innerText()).slice(-1200); note("done", `status ${st} after ${approvals} approvals`); break; }
   }
   if (st === "error") { note("bug", "conversation entered error state"); await shot(page, "error"); break; }
