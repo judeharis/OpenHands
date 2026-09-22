@@ -578,3 +578,56 @@ describe("useSandboxRecovery", () => {
     });
   });
 });
+
+describe("useSandboxRecovery for ERROR and MISSING sandboxes (agentui)", () => {
+  let mockMutate: ReturnType<typeof vi.fn>;
+
+  const createWrapper = () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    return ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockMutate = vi.fn();
+    vi.mocked(useUnifiedResumeConversationSandbox).mockReturnValue({
+      mutate: mockMutate,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUnifiedResumeConversationSandbox>);
+  });
+
+  it("gives an ERROR sandbox one resume attempt on load", () => {
+    renderHook(
+      () =>
+        useSandboxRecovery({
+          conversationId: "conv-err",
+          sandboxStatus: "ERROR",
+        }),
+      { wrapper: createWrapper() },
+    );
+    expect(mockMutate).toHaveBeenCalledTimes(1);
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ conversationId: "conv-err" }),
+      expect.anything(),
+    );
+  });
+
+  it("does not try to resume a MISSING sandbox (there is no container; the banner offers Reopen)", () => {
+    renderHook(
+      () =>
+        useSandboxRecovery({
+          conversationId: "conv-gone",
+          sandboxStatus: "MISSING",
+        }),
+      { wrapper: createWrapper() },
+    );
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+});

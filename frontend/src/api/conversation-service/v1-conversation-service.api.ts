@@ -581,6 +581,25 @@ class V1ConversationService {
    * @param title The new title
    * @returns Updated conversation info
    */
+  /**
+   * Reopen a conversation whose sandbox is gone (MISSING) or broken (ERROR):
+   * start a fresh sandbox for the same conversation id. The agent-server
+   * rehydrates the conversation from the workspace mount, and the app updates
+   * the conversation's sandbox_id. Returns the start task to poll.
+   */
+  static async reopenConversation(
+    conversationId: string,
+  ): Promise<V1AppConversationStartTask> {
+    const body: V1AppConversationStartRequest = {
+      conversation_id: conversationId,
+    };
+    const { data } = await openHands.post<V1AppConversationStartTask>(
+      "/api/v1/app-conversations",
+      body,
+    );
+    return data;
+  }
+
   static async updateConversationTitle(
     conversationId: string,
     title: string,

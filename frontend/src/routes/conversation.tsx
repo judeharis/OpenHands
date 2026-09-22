@@ -21,6 +21,7 @@ import { ConversationSubscriptionsProvider } from "#/context/conversation-subscr
 import { ConversationMain } from "#/components/features/conversation/conversation-main/conversation-main";
 import { ConversationNameWithStatus } from "#/components/features/conversation/conversation-name-with-status";
 import { ArchivedConversationView } from "#/components/features/conversation/archived-conversation-view";
+import { SandboxErrorBanner } from "#/components/features/chat/sandbox-error-banner";
 
 import { ConversationTabs } from "#/components/features/conversation/conversation-tabs/conversation-tabs";
 import { WebSocketProviderWrapper } from "#/contexts/websocket-provider-wrapper";
@@ -121,6 +122,8 @@ function AppContent() {
             <ConversationNameWithStatus />
             <ConversationTabs />
           </div>
+
+          {conversation?.sandbox_status === "ERROR" && <SandboxErrorBanner />}
 
           <ConversationMain />
         </div>

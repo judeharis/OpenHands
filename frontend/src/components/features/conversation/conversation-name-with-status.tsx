@@ -5,6 +5,7 @@ import { useTaskPolling } from "#/hooks/query/use-task-polling";
 import { useActiveConversation } from "#/hooks/query/use-active-conversation";
 import { useUnifiedPauseConversationSandbox } from "#/hooks/mutation/use-unified-stop-conversation";
 import { useUnifiedResumeConversationSandbox } from "#/hooks/mutation/use-unified-start-conversation";
+import { useReopenConversation } from "#/hooks/mutation/use-reopen-conversation";
 import { useUserProviders } from "#/hooks/use-user-providers";
 import { getStatusColor } from "#/utils/utils";
 import { AgentState } from "#/types/agent-state";
@@ -21,6 +22,7 @@ export function ConversationNameWithStatus() {
     useUnifiedPauseConversationSandbox();
   const { mutate: resumeConversationSandbox } =
     useUnifiedResumeConversationSandbox();
+  const { mutate: reopenConversation } = useReopenConversation();
   const { providers } = useUserProviders();
 
   const isStartingStatus =
@@ -47,7 +49,12 @@ export function ConversationNameWithStatus() {
   const handleStartServer = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    if (conversationId) {
+    if (!conversationId) return;
+    // A MISSING sandbox has no container left to resume: start a fresh one for
+    // the same conversation instead. Everything else is a plain resume.
+    if (conversation?.sandbox_status === "MISSING") {
+      reopenConversation({ conversationId });
+    } else {
       resumeConversationSandbox({ conversationId, providers });
     }
   };

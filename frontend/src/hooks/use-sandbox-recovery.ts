@@ -57,9 +57,16 @@ export function useSandboxRecovery({
     (statusOverride?: V1SandboxStatus) => {
       const status = statusOverride ?? sandboxStatus;
       /**
-       * Only recover if sandbox is paused
+       * Recover a paused sandbox (docker pause / stop), and give an ERROR one
+       * try too: after a docker start the health probe reports ERROR until
+       * the agent-server answers, and resume is a no-op on a running container.
+       * MISSING has no container to resume; the archived banner offers Reopen.
        */
-      if (!conversationId || status !== "PAUSED" || isResuming) {
+      if (
+        !conversationId ||
+        (status !== "PAUSED" && status !== "ERROR") ||
+        isResuming
+      ) {
         return;
       }
       resumeSandbox(
@@ -100,7 +107,7 @@ export function useSandboxRecovery({
 
     processedConversationIdRef.current = conversationId;
 
-    if (sandboxStatus === "PAUSED") {
+    if (sandboxStatus === "PAUSED" || sandboxStatus === "ERROR") {
       attemptRecovery();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

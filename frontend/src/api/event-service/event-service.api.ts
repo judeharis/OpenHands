@@ -74,5 +74,32 @@ class EventService {
 
     return data.items;
   }
+
+  /**
+   * Every event of a V1 conversation from the App Server mirror, walking
+   * next_page_id. The server caps a page at 100 and an archived conversation
+   * has no live socket to replay from, so a single page showed only the first
+   * hundred events of a much longer history (phone UX study, 2026-09-21).
+   */
+  static async fetchAllEventsV1(
+    conversationId: string,
+    maxEvents = 5000,
+  ): Promise<OpenHandsEvent[]> {
+    const items: OpenHandsEvent[] = [];
+    let pageId: string | number | null = null;
+    /* eslint-disable no-await-in-loop */
+    do {
+      const params: Record<string, string | number> = { limit: 100 };
+      if (pageId !== null) params.page_id = pageId;
+      const { data } = await openHands.get<{
+        items: OpenHandsEvent[];
+        next_page_id: string | number | null;
+      }>(`/api/v1/conversation/${conversationId}/events/search`, { params });
+      items.push(...data.items);
+      pageId = data.next_page_id ?? null;
+    } while (pageId !== null && items.length < maxEvents);
+    /* eslint-enable no-await-in-loop */
+    return items;
+  }
 }
 export default EventService;

@@ -61,7 +61,7 @@ describe("useConversationHistory", () => {
   });
 
   it("calls V1 REST endpoint for V1 conversations", async () => {
-    const v1SearchEventsSpy = vi.spyOn(EventService, "searchEventsV1");
+    const v1SearchEventsSpy = vi.spyOn(EventService, "fetchAllEventsV1");
 
     vi.mocked(useUserConversation).mockReturnValue({
       data: makeConversation("V1"),
@@ -82,7 +82,7 @@ describe("useConversationHistory", () => {
       expect(result.current.data).toBeDefined();
     });
 
-    expect(EventService.searchEventsV1).toHaveBeenCalledWith("conv-123");
+    expect(EventService.fetchAllEventsV1).toHaveBeenCalledWith("conv-123");
   });
 });
 
@@ -116,7 +116,7 @@ describe("useConversationHistory cache key stability", () => {
   });
 
   it("does not refetch when conversation object changes but version stays the same", async () => {
-    const v1Spy = vi.spyOn(EventService, "searchEventsV1");
+    const v1Spy = vi.spyOn(EventService, "fetchAllEventsV1");
     v1Spy.mockResolvedValue([makeEvent()]);
 
     const conv1 = makeConversation("V1");
@@ -169,11 +169,11 @@ describe("useConversationHistory cache key stability", () => {
 
     // Note: The behavior of always using V1 API regardless of conversation_version
     // means the "version change triggers refetch" test is no longer applicable.
-    // The hook now consistently uses searchEventsV1 for all conversations.
+    // The hook now consistently uses fetchAllEventsV1 for all conversations.
   });
 
   it("treats cached history as never stale (staleTime is Infinity)", async () => {
-    const v1Spy = vi.spyOn(EventService, "searchEventsV1");
+    const v1Spy = vi.spyOn(EventService, "fetchAllEventsV1");
     v1Spy.mockResolvedValue([makeEvent()]);
 
     vi.mocked(useUserConversation).mockReturnValue({
@@ -205,7 +205,7 @@ describe("useConversationHistory cache key stability", () => {
   });
 
   it("has gcTime of at least 30 minutes for navigation resilience", async () => {
-    const v1Spy = vi.spyOn(EventService, "searchEventsV1");
+    const v1Spy = vi.spyOn(EventService, "fetchAllEventsV1");
     v1Spy.mockResolvedValue([makeEvent()]);
 
     vi.mocked(useUserConversation).mockReturnValue({
