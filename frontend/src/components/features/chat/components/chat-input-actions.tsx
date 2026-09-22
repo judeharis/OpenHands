@@ -1,4 +1,5 @@
 import { AgentStatus } from "#/components/features/controls/agent-status";
+import { TurnActivity } from "#/components/features/controls/turn-activity";
 import { Tools } from "../../controls/tools";
 import { useUnifiedPauseConversationSandbox } from "#/hooks/mutation/use-unified-stop-conversation";
 import { useConversationId } from "#/hooks/use-conversation-id";
@@ -32,23 +33,31 @@ export function ChatInputActions({ disabled }: ChatInputActionsProps) {
     pauseConversationSandboxMutation.isPending ||
     v1PauseConversationMutation.isPending;
 
+  /*
+   * Two rows, not one. At 384 px the buttons, the activity strip and the status
+   * label do not fit on a line: flexbox squeezed the label to one character wide
+   * and it came out reading downwards, twelve lines tall, which dragged the whole
+   * composer over half the screen. The strip gets its own full-width line, the
+   * buttons scroll sideways rather than shrink, and the status keeps its width.
+   */
   return (
-    <div className="w-full flex items-center justify-between">
-      <div className="flex items-center gap-1">
-        <div className="flex items-center gap-4">
+    <div className="w-full min-w-0 flex flex-col gap-1.5">
+      <div className="w-full min-w-0 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3 md:gap-4 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Tools />
           <ChangeAgentButton />
           <SwitchProfileButton />
           <SwitchAcpModelButton />
         </div>
+        <AgentStatus
+          className="shrink-0"
+          handleStop={handlePauseAgent}
+          handleResumeAgent={handleResumeAgentClick}
+          disabled={disabled}
+          isPausing={isPausing}
+        />
       </div>
-      <AgentStatus
-        className="ml-2 md:ml-3"
-        handleStop={handlePauseAgent}
-        handleResumeAgent={handleResumeAgentClick}
-        disabled={disabled}
-        isPausing={isPausing}
-      />
+      <TurnActivity />
     </div>
   );
 }
