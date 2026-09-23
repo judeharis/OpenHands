@@ -45,7 +45,8 @@ vi.mock("#/hooks/use-conversation-name-context-menu", () => ({
 
 vi.mock("#/hooks/use-agent-state", () => ({
   useAgentState: vi.fn(() => ({
-    curAgentState: AgentState.AWAITING_USER_INPUT, isArchived: false,
+    curAgentState: AgentState.AWAITING_USER_INPUT,
+    isArchived: false,
   })),
 }));
 
@@ -127,15 +128,19 @@ describe("ChatInterface – message display continuity (spec 3.1)", () => {
       } as ReturnType<typeof useActiveConversation>);
     });
 
-    it("shows messages immediately when V1 events exist in store, even while loading", () => {
-      // Simulate: history is loading but events already exist in store (e.g., remount)
+    it("keeps the skeleton while the history is loading, even with events already in the store (jentic)", () => {
+      // Upstream showed the messages as soon as any were in the store. The rest of the
+      // history then streamed in underneath, each event moving the bottom of the chat, and
+      // every reopen scrolled the whole conversation past on its way to the newest message.
+      // The chat now appears once the history has arrived, already at its newest message.
+      // (A remount with the history already loaded still shows at once: see the edge case
+      // below.)
       vi.mocked(useConversationWebSocket).mockReturnValue({
         isLoadingHistory: true,
         connectionState: "OPEN",
         sendMessage: vi.fn(),
       });
 
-      // Put V1 user events in the store
       const v1UserEvent = createUserMessageEvent("evt-1");
       useEventStore.setState({
         events: [v1UserEvent],
@@ -144,11 +149,7 @@ describe("ChatInterface – message display continuity (spec 3.1)", () => {
 
       renderWithQueryClient(<ChatInterface />, queryClient);
 
-      // AC1: Messages should display immediately without skeleton
-      expect(
-        screen.queryByTestId("chat-messages-skeleton"),
-      ).not.toBeInTheDocument();
-      expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+      expect(screen.getByTestId("chat-messages-skeleton")).toBeInTheDocument();
     });
 
     it("shows skeleton when store is empty and loading", () => {

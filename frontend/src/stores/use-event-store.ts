@@ -58,68 +58,78 @@ export interface EventState {
   eventIds: Set<string | number>;
   uiEvents: OHEvent[];
   addEvent: (event: OHEvent) => void;
+  addEvents: (events: OHEvent[]) => void;
   clearEvents: () => void;
 }
+
+type EventLists = Pick<EventState, "events" | "eventIds" | "uiEvents">;
+
+/** The lists with one more event in them, or `state` itself if it is a duplicate. */
+const withEvent = (state: EventLists, event: OHEvent): EventLists => {
+  // Deduplicate: skip if event with same id already exists (O(1) lookup)
+  const eventId = getEventId(event);
+  if (eventId !== undefined && state.eventIds.has(eventId)) {
+    return state;
+  }
+
+  // Merge consecutive streaming token deltas into a single growing entry
+  // (keeping the first delta's id) so the durable log isn't flooded with one
+  // entry per token. Deltas must stay in `events`: the chat passes this list
+  // as `allEvents` for lookups, and a delta missing from it renders empty.
+  // Non-delta events append normally.
+  const lastEvent = state.events[state.events.length - 1];
+  let newEvents: OHEvent[];
+  if (
+    lastEvent &&
+    isV1Event(event) &&
+    isV1Event(lastEvent) &&
+    isStreamingDeltaEvent(event) &&
+    isStreamingDeltaEvent(lastEvent)
+  ) {
+    newEvents = [...state.events];
+    newEvents[newEvents.length - 1] = mergeStreamingDeltaEvent(
+      event,
+      lastEvent,
+    );
+  } else {
+    newEvents = [...state.events, event];
+  }
+  if (needsSorting(state.events, event)) {
+    newEvents = newEvents.sort(compareEventsByTimestamp);
+  }
+
+  const newEventIds =
+    eventId !== undefined
+      ? new Set(state.eventIds).add(eventId)
+      : state.eventIds;
+
+  // Process UI events and sort if needed
+  let newUiEvents = isV1Event(event)
+    ? // @ts-expect-error - temporary, needs proper typing
+      handleEventForUI(event, state.uiEvents)
+    : [...state.uiEvents, event];
+
+  if (needsSorting(state.uiEvents, event)) {
+    newUiEvents = newUiEvents.sort(compareEventsByTimestamp);
+  }
+
+  return {
+    events: newEvents,
+    eventIds: newEventIds,
+    uiEvents: newUiEvents,
+  };
+};
 
 export const useEventStore = create<EventState>()((set) => ({
   events: [],
   eventIds: new Set(),
   uiEvents: [],
-  addEvent: (event: OHEvent) =>
-    set((state) => {
-      // Deduplicate: skip if event with same id already exists (O(1) lookup)
-      const eventId = getEventId(event);
-      if (eventId !== undefined && state.eventIds.has(eventId)) {
-        return state;
-      }
-
-      // Merge consecutive streaming token deltas into a single growing entry
-      // (keeping the first delta's id) so the durable log isn't flooded with one
-      // entry per token. Deltas must stay in `events`: the chat passes this list
-      // as `allEvents` for lookups, and a delta missing from it renders empty.
-      // Non-delta events append normally.
-      const lastEvent = state.events[state.events.length - 1];
-      let newEvents: OHEvent[];
-      if (
-        lastEvent &&
-        isV1Event(event) &&
-        isV1Event(lastEvent) &&
-        isStreamingDeltaEvent(event) &&
-        isStreamingDeltaEvent(lastEvent)
-      ) {
-        newEvents = [...state.events];
-        newEvents[newEvents.length - 1] = mergeStreamingDeltaEvent(
-          event,
-          lastEvent,
-        );
-      } else {
-        newEvents = [...state.events, event];
-      }
-      if (needsSorting(state.events, event)) {
-        newEvents = newEvents.sort(compareEventsByTimestamp);
-      }
-
-      const newEventIds =
-        eventId !== undefined
-          ? new Set(state.eventIds).add(eventId)
-          : state.eventIds;
-
-      // Process UI events and sort if needed
-      let newUiEvents = isV1Event(event)
-        ? // @ts-expect-error - temporary, needs proper typing
-          handleEventForUI(event, state.uiEvents)
-        : [...state.uiEvents, event];
-
-      if (needsSorting(state.uiEvents, event)) {
-        newUiEvents = newUiEvents.sort(compareEventsByTimestamp);
-      }
-
-      return {
-        events: newEvents,
-        eventIds: newEventIds,
-        uiEvents: newUiEvents,
-      };
-    }),
+  addEvent: (event: OHEvent) => set((state) => withEvent(state, event)),
+  // Many events in ONE store update. A conversation's history arrives as hundreds of
+  // events at once (the WebSocket replay, the REST preload), and adding them one at a
+  // time re-rendered every subscriber -- the whole chat -- once per event.
+  addEvents: (events: OHEvent[]) =>
+    set((state) => events.reduce<EventLists>(withEvent, state)),
   clearEvents: () =>
     set(() => ({
       events: [],

@@ -59,22 +59,20 @@ beforeEach(() => {
       }
     },
   );
-  // requestAnimationFrame runs immediately so the effect is observable in the test
-  vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-    cb(0);
-    return 1;
-  });
+  // No frame ever comes: whatever the hook does must happen before the first paint.
+  // Pinning in a requestAnimationFrame let one frame of the top of the history through.
+  vi.stubGlobal("requestAnimationFrame", () => 1);
   vi.stubGlobal("cancelAnimationFrame", () => {});
 });
 
 describe("opening a conversation (jentic)", () => {
-  it("lands on the newest message, not the start of the history", () => {
+  it("lands on the newest message before the first paint, not the start of the history", () => {
     const { el, state } = element();
     const ref = { current: el } as RefObject<HTMLDivElement | null>;
     const onOpen = vi.fn();
 
     const { result } = renderHook(() =>
-      useOpenAtBottom(ref, "conv-1", { ready: true, follow: true, onOpen }),
+      useOpenAtBottom(ref, { ready: true, follow: true, onOpen }),
     );
 
     expect(state.scrollTop).toBe(3000);
@@ -82,13 +80,13 @@ describe("opening a conversation (jentic)", () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("does nothing until the events are on screen", () => {
+  it("does nothing until the whole history is on screen", () => {
     const { el, state } = element();
     const ref = { current: el } as RefObject<HTMLDivElement | null>;
     const onOpen = vi.fn();
 
     const { result } = renderHook(() =>
-      useOpenAtBottom(ref, "conv-1", { ready: false, follow: true, onOpen }),
+      useOpenAtBottom(ref, { ready: false, follow: true, onOpen }),
     );
 
     expect(state.scrollTop).toBe(0);
@@ -96,12 +94,34 @@ describe("opening a conversation (jentic)", () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
+  it("opens at the bottom again when the history is reloaded", () => {
+    // Another conversation, or this one reopened: `ready` drops while its history loads.
+    const { el, state } = element();
+    const ref = { current: el } as RefObject<HTMLDivElement | null>;
+    const onOpen = vi.fn();
+
+    const { result, rerender } = renderHook(
+      ({ ready }) => useOpenAtBottom(ref, { ready, follow: true, onOpen }),
+      { initialProps: { ready: true } },
+    );
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
+    rerender({ ready: false });
+    expect(result.current.opened).toBe(false);
+
+    state.scrollTop = 0; // the new history renders from its top
+    state.scrollHeight = 8000;
+    rerender({ ready: true });
+    expect(state.scrollTop).toBe(8000);
+    expect(onOpen).toHaveBeenCalledTimes(2);
+  });
+
   it("holds the bottom while the history is still laying out", () => {
     const { el, state } = element();
     const ref = { current: el } as RefObject<HTMLDivElement | null>;
 
     renderHook(() =>
-      useOpenAtBottom(ref, "conv-1", { ready: true, follow: true, onOpen: () => {} }),
+      useOpenAtBottom(ref, { ready: true, follow: true, onOpen: () => {} }),
     );
     expect(state.scrollTop).toBe(3000);
 
@@ -120,7 +140,7 @@ describe("opening a conversation (jentic)", () => {
     const ref = { current: el } as RefObject<HTMLDivElement | null>;
 
     renderHook(() =>
-      useOpenAtBottom(ref, "conv-1", { ready: true, follow: true, onOpen: () => {} }),
+      useOpenAtBottom(ref, { ready: true, follow: true, onOpen: () => {} }),
     );
     expect(state.scrollTop).toBe(3000);
 
@@ -137,7 +157,7 @@ describe("opening a conversation (jentic)", () => {
 
     const { rerender } = renderHook(
       ({ follow }) =>
-        useOpenAtBottom(ref, "conv-1", { ready: true, follow, onOpen: () => {} }),
+        useOpenAtBottom(ref, { ready: true, follow, onOpen: () => {} }),
       { initialProps: { follow: true } },
     );
     observed = [];

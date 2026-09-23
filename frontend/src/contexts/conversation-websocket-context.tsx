@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useWebSocket, WebSocketHookOptions } from "#/hooks/use-websocket";
-import { useEventStore } from "#/stores/use-event-store";
+import { OHEvent, useEventStore } from "#/stores/use-event-store";
 import { useModelStore } from "#/stores/model-store";
 import { getRenderedV1Events } from "#/components/v1/chat/event-content-helpers/should-render-event";
 import { updateConversationLlmModelInCache } from "#/hooks/mutation/conversation-mutation-utils";
@@ -40,6 +40,14 @@ import type {
   ConversationErrorEvent,
   ServerErrorEvent,
 } from "#/types/v1/core/events/conversation-state-event";
+import {
+  countReplayed,
+  NOT_REPLAYING,
+  REPLAY_FLUSH_MS,
+  REPLAY_MAX_MS,
+  ReplayWindow,
+  replayComplete,
+} from "#/utils/history-replay";
 import { handleActionEventCacheInvalidation } from "#/utils/cache-utils";
 import { buildWebSocketUrl } from "#/utils/websocket-url";
 import type {
@@ -104,7 +112,7 @@ export function ConversationWebSocketProvider({
   const hasConnectedRefPlanning = React.useRef(false);
 
   const queryClient = useQueryClient();
-  const { addEvent } = useEventStore();
+  const { addEvent, addEvents } = useEventStore();
   const { setErrorMessage, removeErrorMessage } = useErrorMessageStore();
   const { removeOptimisticUserMessage } = useOptimisticUserMessageStore();
   const { setExecutionStatus } = useV1ConversationStateStore();
@@ -114,21 +122,108 @@ export function ConversationWebSocketProvider({
   const [isLoadingHistoryMain, setIsLoadingHistoryMain] = useState(true);
   const [isLoadingHistoryPlanning, setIsLoadingHistoryPlanning] =
     useState(true);
-  const [expectedEventCountMain, setExpectedEventCountMain] = useState<
-    number | null
-  >(null);
-  const [expectedEventCountPlanning, setExpectedEventCountPlanning] = useState<
-    number | null
-  >(null);
 
   const { setPlanContent } = useConversationStore();
 
   // Hook for reading conversation file
   const { mutate: readConversationFile } = useReadConversationFile();
 
-  // Separate received event count tracking per connection
-  const receivedEventCountRefMain = useRef(0);
-  const receivedEventCountRefPlanning = useRef(0);
+  // Every (re)connection replays the conversation's whole history (resend_all), one
+  // message per event: 422 events for a long conversation reach the browser in about
+  // 50 ms. Added to the store one at a time they re-rendered the chat once per event,
+  // which stretched the replay to 20 s and scrolled the history past on every reopen. So
+  // a connection's replay is queued and added in one store update -- when the count the
+  // sandbox reported has arrived, or every REPLAY_FLUSH_MS while it is still arriving.
+  // Live events after the replay go straight to the store, as before.
+  const replayQueueRef = useRef<OHEvent[]>([]);
+  const replayFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const replayMainRef = useRef<ReplayWindow>(NOT_REPLAYING);
+  const replayPlanningRef = useRef<ReplayWindow>(NOT_REPLAYING);
+
+  const flushReplayQueue = useCallback(() => {
+    if (replayFlushTimerRef.current !== null) {
+      clearTimeout(replayFlushTimerRef.current);
+      replayFlushTimerRef.current = null;
+    }
+    const queued = replayQueueRef.current;
+    if (queued.length === 0) return;
+    replayQueueRef.current = [];
+    addEvents(queued);
+  }, [addEvents]);
+
+  const queueReplayEvent = useCallback(
+    (event: OHEvent) => {
+      replayQueueRef.current.push(event);
+      if (replayFlushTimerRef.current === null) {
+        replayFlushTimerRef.current = setTimeout(
+          flushReplayQueue,
+          REPLAY_FLUSH_MS,
+        );
+      }
+    },
+    [flushReplayQueue],
+  );
+
+  const endReplay = useCallback(
+    (replay: ReplayWindow) => {
+      if (!replay.active) return;
+      // eslint-disable-next-line no-param-reassign
+      replay.active = false;
+      flushReplayQueue();
+      replay.onEnd();
+    },
+    [flushReplayQueue],
+  );
+
+  // A connection has opened: queue its replay until the count the sandbox reports has
+  // arrived. The count is requested after the socket opens, so it can land before or
+  // after the replay does; whichever completes the window ends it.
+  const startReplay = useCallback(
+    (
+      replayRef: React.MutableRefObject<ReplayWindow>,
+      countRequest: Promise<number> | null,
+      onEnd: () => void,
+    ) => {
+      const replay: ReplayWindow = {
+        active: true,
+        firstMessage: true,
+        received: 0,
+        expected: null,
+        onEnd,
+      };
+      // eslint-disable-next-line no-param-reassign
+      replayRef.current = replay;
+      if (!countRequest) {
+        endReplay(replay);
+        return;
+      }
+      setTimeout(() => endReplay(replay), REPLAY_MAX_MS);
+      countRequest.then(
+        (count) => {
+          replay.expected = count;
+          if (replayComplete(replay)) endReplay(replay);
+        },
+        () => endReplay(replay),
+      );
+    },
+    [endReplay],
+  );
+
+  // Nothing queued for one conversation may land in the next one's chat.
+  useEffect(
+    () => () => {
+      replayQueueRef.current = [];
+      if (replayFlushTimerRef.current !== null) {
+        clearTimeout(replayFlushTimerRef.current);
+        replayFlushTimerRef.current = null;
+      }
+      replayMainRef.current.active = false;
+      replayPlanningRef.current.active = false;
+    },
+    [conversationId],
+  );
 
   // Track the latest PlanningFileEditorObservation for Plan.md during history replay
   const latestPlanningFileEventRef = useRef<{
@@ -261,30 +356,6 @@ export function ConversationWebSocketProvider({
     return "CLOSED";
   }, [mainConnectionState, planningConnectionState, planningAgentWsUrl]);
 
-  useEffect(() => {
-    if (
-      expectedEventCountMain !== null &&
-      receivedEventCountRefMain.current >= expectedEventCountMain &&
-      isLoadingHistoryMain
-    ) {
-      setIsLoadingHistoryMain(false);
-    }
-  }, [expectedEventCountMain, isLoadingHistoryMain, receivedEventCountRefMain]);
-
-  useEffect(() => {
-    if (
-      expectedEventCountPlanning !== null &&
-      receivedEventCountRefPlanning.current >= expectedEventCountPlanning &&
-      isLoadingHistoryPlanning
-    ) {
-      setIsLoadingHistoryPlanning(false);
-    }
-  }, [
-    expectedEventCountPlanning,
-    isLoadingHistoryPlanning,
-    receivedEventCountRefPlanning,
-  ]);
-
   // Call API once after history loading completes if we tracked any PlanningFileEditorObservation events
   useEffect(() => {
     if (!isLoadingHistoryPlanning && latestPlanningFileEventRef.current) {
@@ -315,8 +386,6 @@ export function ConversationWebSocketProvider({
   useEffect(() => {
     hasConnectedRefMain.current = false;
     setIsLoadingHistoryPlanning(!!subConversationIds?.length);
-    setExpectedEventCountPlanning(null);
-    receivedEventCountRefPlanning.current = 0;
     // Reset the tracked event ref when sub-conversations change
     latestPlanningFileEventRef.current = null;
   }, [subConversationIds]);
@@ -331,8 +400,6 @@ export function ConversationWebSocketProvider({
   useEffect(() => {
     hasConnectedRefPlanning.current = false;
     setIsLoadingHistoryMain(true);
-    setExpectedEventCountMain(null);
-    receivedEventCountRefMain.current = 0;
     // Reset the tracked event ref when conversation changes
     latestPlanningFileEventRef.current = null;
   }, [conversationId]);
@@ -353,36 +420,24 @@ export function ConversationWebSocketProvider({
       return;
     }
 
-    // Add all preloaded events to the store
-    for (const event of preloadedEvents) {
-      addEvent(event);
-    }
+    // Add all preloaded events to the store, in one update
+    addEvents(preloadedEvents);
 
     setIsLoadingHistoryMain(false);
-  }, [preloadedEvents, isHistoryFetched, addEvent]);
+  }, [preloadedEvents, isHistoryFetched, addEvents]);
 
   // Separate message handlers for each connection
   const handleMainMessage = useCallback(
     (messageEvent: MessageEvent) => {
       try {
         const event = JSON.parse(messageEvent.data);
-
-        // Track received events for history loading (count ALL events from WebSocket)
-        // Always count when loading, even if we don't have the expected count yet
-        if (isLoadingHistoryMain) {
-          receivedEventCountRefMain.current += 1;
-
-          if (
-            expectedEventCountMain !== null &&
-            receivedEventCountRefMain.current >= expectedEventCountMain
-          ) {
-            setIsLoadingHistoryMain(false);
-          }
-        }
+        const replay = replayMainRef.current;
+        const replayed = countReplayed(replay, event);
 
         // Use type guard to validate v1 event structure
         if (isV1Event(event)) {
-          addEvent(event);
+          if (replayed) queueReplayEvent(event);
+          else addEvent(event);
 
           // Handle displayable error events - show error banner
           // AgentErrorEvent errors are displayed inline in the chat, not as banners
@@ -478,6 +533,7 @@ export function ConversationWebSocketProvider({
             isSwitchLLMObservationEvent(event) &&
             !event.observation.is_error
           ) {
+            flushReplayQueue(); // the anchor is the last event actually rendered
             const last = getRenderedV1Events(
               useEventStore.getState().uiEvents,
             ).at(-1);
@@ -530,6 +586,8 @@ export function ConversationWebSocketProvider({
             useBrowserStore.getState().setUrl(event.action.url);
           }
         }
+
+        if (replayComplete(replay)) endReplay(replay);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.warn("Failed to parse WebSocket message as JSON:", error);
@@ -537,8 +595,9 @@ export function ConversationWebSocketProvider({
     },
     [
       addEvent,
-      isLoadingHistoryMain,
-      expectedEventCountMain,
+      queueReplayEvent,
+      flushReplayQueue,
+      endReplay,
       setErrorMessage,
       removeErrorMessage,
       removeOptimisticUserMessage,
@@ -555,19 +614,8 @@ export function ConversationWebSocketProvider({
     (messageEvent: MessageEvent) => {
       try {
         const event = JSON.parse(messageEvent.data);
-
-        // Track received events for history loading (count ALL events from WebSocket)
-        // Always count when loading, even if we don't have the expected count yet
-        if (isLoadingHistoryPlanning) {
-          receivedEventCountRefPlanning.current += 1;
-
-          if (
-            expectedEventCountPlanning !== null &&
-            receivedEventCountRefPlanning.current >= expectedEventCountPlanning
-          ) {
-            setIsLoadingHistoryPlanning(false);
-          }
-        }
+        const replay = replayPlanningRef.current;
+        const replayed = countReplayed(replay, event);
 
         // Use type guard to validate v1 event structure
         if (isV1Event(event)) {
@@ -576,7 +624,8 @@ export function ConversationWebSocketProvider({
             ...event,
             isFromPlanningAgent: true,
           };
-          addEvent(eventWithPlanningFlag);
+          if (replayed) queueReplayEvent(eventWithPlanningFlag);
+          else addEvent(eventWithPlanningFlag);
 
           // Handle displayable error events - show error banner
           // AgentErrorEvent errors are displayed inline in the chat, not as banners
@@ -708,6 +757,8 @@ export function ConversationWebSocketProvider({
             }
           }
         }
+
+        if (replayComplete(replay)) endReplay(replay);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.warn("Failed to parse WebSocket message as JSON:", error);
@@ -715,8 +766,9 @@ export function ConversationWebSocketProvider({
     },
     [
       addEvent,
+      queueReplayEvent,
+      endReplay,
       isLoadingHistoryPlanning,
-      expectedEventCountPlanning,
       setErrorMessage,
       removeErrorMessage,
       removeOptimisticUserMessage,
@@ -747,19 +799,28 @@ export function ConversationWebSocketProvider({
       queryParams,
       reconnect: { enabled: true },
       onOpen: async () => {
+        // One count request serves both the replay queue and history loading.
+        const countRequest =
+          conversationId && conversationUrl
+            ? EventService.getEventCount(
+                conversationId,
+                conversationUrl,
+                sessionApiKey,
+              )
+            : null;
+        // The first connection's replay landing is what "history has loaded" means.
+        startReplay(replayMainRef, countRequest, () =>
+          setIsLoadingHistoryMain(false),
+        );
+
         setMainConnectionState("OPEN");
         hasConnectedRefMain.current = true; // Mark that we've successfully connected
         removeErrorMessage(); // Clear any previous error messages on successful connection
 
         // Fetch expected event count for history loading detection
-        if (conversationId && conversationUrl) {
+        if (countRequest) {
           try {
-            const count = await EventService.getEventCount(
-              conversationId,
-              conversationUrl,
-              sessionApiKey,
-            );
-            setExpectedEventCountMain(count);
+            const count = await countRequest;
 
             // If no events expected, mark as loaded immediately
             if (count === 0) {
@@ -786,6 +847,7 @@ export function ConversationWebSocketProvider({
       onMessage: handleMainMessage,
     };
   }, [
+    startReplay,
     handleMainMessage,
     setErrorMessage,
     removeErrorMessage,
@@ -811,22 +873,28 @@ export function ConversationWebSocketProvider({
       queryParams,
       reconnect: { enabled: true },
       onOpen: async () => {
+        // One count request serves both the replay queue and history loading.
+        const countRequest =
+          planningAgentConversation?.id &&
+          planningAgentConversation.conversation_url
+            ? EventService.getEventCount(
+                planningAgentConversation.id,
+                planningAgentConversation.conversation_url,
+                planningAgentConversation.session_api_key,
+              )
+            : null;
+        startReplay(replayPlanningRef, countRequest, () =>
+          setIsLoadingHistoryPlanning(false),
+        );
+
         setPlanningConnectionState("OPEN");
         hasConnectedRefPlanning.current = true; // Mark that we've successfully connected
         removeErrorMessage(); // Clear any previous error messages on successful connection
 
         // Fetch expected event count for history loading detection
-        if (
-          planningAgentConversation?.id &&
-          planningAgentConversation.conversation_url
-        ) {
+        if (countRequest) {
           try {
-            const count = await EventService.getEventCount(
-              planningAgentConversation.id,
-              planningAgentConversation.conversation_url,
-              planningAgentConversation.session_api_key,
-            );
-            setExpectedEventCountPlanning(count);
+            const count = await countRequest;
 
             // If no events expected, mark as loaded immediately
             if (count === 0) {
@@ -853,6 +921,7 @@ export function ConversationWebSocketProvider({
       onMessage: handlePlanningMessage,
     };
   }, [
+    startReplay,
     handlePlanningMessage,
     setErrorMessage,
     removeErrorMessage,

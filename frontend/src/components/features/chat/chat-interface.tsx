@@ -117,12 +117,11 @@ export function ChatInterface() {
     0;
   const hasModelEntries = modelEntriesCount > 0;
 
-  // Show V1 messages immediately if events exist in store (e.g., remount),
-  // or once loading completes. This replaces the old transition-observation
-  // pattern (useState + useEffect watching loading→loaded) which always showed
-  // skeleton on remount because local state initialized to false.
-  const showV1Messages =
-    v1FullEvents.length > 0 || !conversationWebSocket?.isLoadingHistory;
+  // Show the V1 messages once the history has finished loading, not while it streams
+  // in: shown as it arrived, each event moved the bottom of the chat and every reopen
+  // scrolled the whole conversation past on its way to the newest message. A remount,
+  // with the history already loaded, still shows them at once.
+  const showV1Messages = !conversationWebSocket?.isLoadingHistory;
 
   const isReturningToConversation = !!params.conversationId;
   // Only show loading skeleton when genuinely loading AND no events in store yet.
@@ -193,18 +192,14 @@ export function ChatInterface() {
 
   // Opening or reloading a conversation lands on the newest message, with no travel
   // through the history on the way.
-  const { opened: restored } = useOpenAtBottom(
-    scrollRef,
-    params.conversationId,
-    {
-      ready: v1UiEvents.length + v0Events.length > 0,
-      follow: autoScroll,
-      onOpen: () => {
-        setAutoScroll(true);
-        setHitBottom(true);
-      },
+  const { opened: restored } = useOpenAtBottom(scrollRef, {
+    ready: showV1Messages && v1UiEvents.length + v0Events.length > 0,
+    follow: autoScroll,
+    onOpen: () => {
+      setAutoScroll(true);
+      setHitBottom(true);
     },
-  );
+  });
 
   // Auto-scroll to bottom when new messages arrive
   React.useEffect(() => {

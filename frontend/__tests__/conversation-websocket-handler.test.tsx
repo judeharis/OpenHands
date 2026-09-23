@@ -1520,4 +1520,155 @@ describe("Conversation WebSocket Handler", () => {
       );
     });
   });
+
+  // jentic: every (re)connection replays the whole history, one WebSocket message per
+  // event. Added to the store one at a time, each re-rendered the chat: 422 events took
+  // 20 s to land in a real browser and the history visibly scrolled past on every reopen.
+  describe("History replay batching (jentic)", () => {
+    const watchStoreUpdates = () => {
+      const lengths: number[] = [];
+      const unsubscribe = useEventStore.subscribe((state, prev) => {
+        if (state.events !== prev.events) lengths.push(state.events.length);
+      });
+      return { lengths, unsubscribe };
+    };
+
+    function LoadingState() {
+      const context = useConversationWebSocket();
+      return (
+        <div data-testid="is-loading-history">
+          {context?.isLoadingHistory ? "true" : "false"}
+        </div>
+      );
+    }
+
+    const mockHistoryApis = (conversationId: string, count: () => number) =>
+      mswServer.use(
+        // no REST preload: the WebSocket replay is the only way in
+        http.get(
+          `http://localhost:3000/api/v1/conversation/${conversationId}/events/search`,
+          () => HttpResponse.json({ items: [] }),
+        ),
+        http.get(
+          `http://localhost:3000/api/conversations/${conversationId}/events/count`,
+          () => HttpResponse.json(count()),
+        ),
+      );
+
+    it("adds a connection's replayed history to the store in one update", async () => {
+      const conversationId = "test-conversation-replay-batch";
+      const history = Array.from({ length: 30 }, (_, i) =>
+        createMockMessageEvent({ id: `replayed-${i + 1}` }),
+      );
+      mockHistoryApis(conversationId, () => history.length);
+      mswServer.use(
+        wsLink.addEventListener("connection", ({ client, server }) => {
+          server.connect();
+          history.forEach((event) => client.send(JSON.stringify(event)));
+        }),
+      );
+
+      const updates = watchStoreUpdates();
+      renderWithWebSocketContext(
+        <LoadingState />,
+        conversationId,
+        `http://localhost:3000/api/conversations/${conversationId}`,
+      );
+
+      await waitFor(() => {
+        expect(useEventStore.getState().events).toHaveLength(30);
+      });
+      updates.unsubscribe();
+      expect(updates.lengths).toEqual([30]);
+    });
+
+    it("adds live events straight to the store once the replay is complete", async () => {
+      const conversationId = "test-conversation-replay-then-live";
+      const history = [
+        createMockUserMessageEvent({ id: "replayed-user" }),
+        createMockMessageEvent({ id: "replayed-agent" }),
+      ];
+      let socket: { send: (data: string) => void } | null = null;
+      mockHistoryApis(conversationId, () => history.length);
+      mswServer.use(
+        wsLink.addEventListener("connection", ({ client, server }) => {
+          server.connect();
+          socket = client;
+          history.forEach((event) => client.send(JSON.stringify(event)));
+        }),
+      );
+
+      renderWithWebSocketContext(
+        <LoadingState />,
+        conversationId,
+        `http://localhost:3000/api/conversations/${conversationId}`,
+      );
+      await waitFor(() => {
+        expect(useEventStore.getState().events).toHaveLength(2);
+      });
+
+      const updates = watchStoreUpdates();
+      act(() => {
+        socket!.send(
+          JSON.stringify(createMockMessageEvent({ id: "live-agent" })),
+        );
+      });
+      // Well inside the replay queue's 100 ms flush: the live event was not held back.
+      await waitFor(
+        () => {
+          expect(useEventStore.getState().events).toHaveLength(3);
+        },
+        { timeout: 60 },
+      );
+      updates.unsubscribe();
+      expect(updates.lengths).toEqual([3]);
+    });
+
+    it("adds what a reconnect's replay brings that is new, in one update", async () => {
+      // Reopening the phone app without a reload: the socket reconnects and the whole
+      // history is replayed again, with whatever happened while it was away at the end.
+      const conversationId = "test-conversation-replay-reconnect";
+      const before = Array.from({ length: 3 }, (_, i) =>
+        createMockMessageEvent({ id: `before-${i + 1}` }),
+      );
+      const whileAway = Array.from({ length: 5 }, (_, i) =>
+        createMockMessageEvent({ id: `while-away-${i + 1}` }),
+      );
+      let connections = 0;
+      mockHistoryApis(conversationId, () =>
+        connections === 1 ? before.length : before.length + whileAway.length,
+      );
+      let dropFirstConnection: (() => void) | null = null;
+      mswServer.use(
+        wsLink.addEventListener("connection", ({ client, server }) => {
+          connections += 1;
+          server.connect();
+          const replay = connections === 1 ? before : [...before, ...whileAway];
+          replay.forEach((event) => client.send(JSON.stringify(event)));
+          if (connections === 1) dropFirstConnection = () => client.close();
+        }),
+      );
+
+      renderWithWebSocketContext(
+        <LoadingState />,
+        conversationId,
+        `http://localhost:3000/api/conversations/${conversationId}`,
+      );
+      await waitFor(() => {
+        expect(useEventStore.getState().events).toHaveLength(3);
+      });
+
+      const updates = watchStoreUpdates();
+      act(() => dropFirstConnection!());
+      await waitFor(
+        () => {
+          expect(useEventStore.getState().events).toHaveLength(8);
+        },
+        { timeout: 6000 }, // the client waits 3 s before reconnecting
+      );
+      updates.unsubscribe();
+      expect(connections).toBe(2);
+      expect(updates.lengths).toEqual([8]);
+    }, 10000);
+  });
 });
