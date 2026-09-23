@@ -4,7 +4,7 @@
 model, on the `llmkit` branch — and keep them small enough to rebase onto upstream. What was
 measured and why: [phone-ux.md](phone-ux.md). The kit that deploys this fork, and the rest of
 the story: `../../../STATUS.md` in the jentic repo (this is the submodule).
-**Last checkpoint:** 2026-09-23
+**Last checkpoint:** 2026-09-23 (corrected)
 
 ## Headline
 
@@ -28,7 +28,7 @@ change in this fork is live.
 
 ## Completed this session (with evidence)
 
-1. **A conversation opens on its newest message** (`1319d3669`). `useRememberedScroll` opened a long conversation at `top: 0` with following off. Replaced by `useOpenAtBottom`, which needs *two* observers — see the trap below. Verified by driving a real browser: sampled every 500 ms, the container is at the bottom from 0.5 s and holds while content grows 4,194 → 11,558 px.
+1. **A conversation opens on its newest message** (`1319d3669`). `useRememberedScroll` opened a long conversation at `top: 0` with following off. Replaced by `useOpenAtBottom`, which needs *two* observers — see the trap below. **This was necessary and not sufficient**, and the 500 ms sampling used to verify it could not have shown that: the real cause of the reported scrolling was the websocket replaying history one event per message, each re-pinning the view, which a sampler only ever catches after the pin. Fixed by a second session (batched adds, a replay queue, a skeleton, a layout-effect pin); measured per frame, 41,928 px of travel became 0.
 2. **Tool output is literal text** (`84ee3200c`). `__init__.py` was printed as a bold `init.py`; browser state ran into the conversation as thousands of JSON objects; a truncation mid-block left the fence open. All three were unfenced text handed to react-markdown. Fencing is conditional for browser output so a one-line status stays a sentence. Blocks over eight lines now collapse to six with "Show N more lines".
 3. **An activity strip** (`74903fdb3`). Spinner and clock on a timer, not on events, because the quiet stretch is exactly when no events arrive; a `~` estimate from the streaming deltas; and the conversation's exact totals with the prompt cache's share.
 4. **Code or Plan at creation** (`79aae88c2`). The plumbing existed and was unused: `agent_type` is declared by the server as `{default, plan}` and nothing in the web UI passed it, so plan mode was reachable only through `jentic-cli plan`.
@@ -36,7 +36,8 @@ change in this fork is live.
 
 ## Tried and failed
 
-- **A ResizeObserver set up once watches only the children that existed then.** The first version of the scroll fix pinned to the bottom of the first message, then drifted up the history as messages streamed in — because a message arriving is a DOM change, not a size change. It needs a MutationObserver as well, with the ResizeObserver kept for markdown and images that lay out late. It took two reports of "still scrolling" before this was measured in a browser rather than reasoned about from the source.
+- **Sampling cannot see a fault that happens between samples.** `scrollTop` sampled every 500 ms from `127.0.0.1` said the container was at the bottom in every sample, which cleared the chat and sent two fixes at the wrong target. Per-frame recording over the URL the user actually loads is what found it. The kit's `plans/traps.md` carries the full entry.
+- **A ResizeObserver set up once watches only the children that existed then.** The first version of the scroll fix pinned to the bottom of the first message, then drifted up the history as messages streamed in — because a message arriving is a DOM change, not a size change. It needs a MutationObserver as well, with the ResizeObserver kept for markdown and images that lay out late.
 - **A context gauge cannot be built from `accumulated_token_usage`.** It is the conversation's running total: 1,875,850 prompt tokens against a `context_window` of 30,000, so the strip read "context 1876k/30k". `per_turn_token` is also a total (82,101 against the same 30,000). Nothing in that payload holds the current prompt size.
 - **Two tests passed with their fix removed.** An observer stub registered its callback in the constructor rather than in `observe()`; and the browser-output tests passed unfenced. Both were re-checked by disabling the fix and watching them fail.
 - **`window.matchMedia` is not guaranteed.** The Enter-to-send handler checked `window` but not the function, and threw on every keystroke under jsdom.
