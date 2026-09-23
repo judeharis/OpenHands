@@ -16,6 +16,7 @@ const BrowserTab = lazy(() => import("#/routes/browser-tab"));
 const VSCodeTab = lazy(() => import("#/routes/vscode-tab"));
 const PlannerTab = lazy(() => import("#/routes/planner-tab"));
 const TaskListTab = lazy(() => import("#/routes/task-list-tab"));
+const StatsTab = lazy(() => import("#/routes/stats-tab"));
 
 const TAB_CONFIG = {
   tasklist: {
@@ -42,6 +43,13 @@ const TAB_CONFIG = {
     component: PlannerTab,
     titleKey: I18nKey.COMMON$PLANNER,
   },
+  // Fork-only: title is a literal, because translation.json is kept complete upstream and
+  // the pre-commit hook checks it.
+  stats: {
+    component: StatsTab,
+    titleKey: null,
+    title: "Stats",
+  },
 };
 
 export function ConversationTabContent() {
@@ -56,7 +64,10 @@ export function ConversationTabContent() {
   );
 
   const ActiveComponent = activeTab.component;
-  const conversationTabTitle = t(activeTab.titleKey);
+  const conversationTabTitle =
+    "title" in activeTab && activeTab.title
+      ? activeTab.title
+      : t(activeTab.titleKey as I18nKey);
 
   if (shouldShownAgentLoading) {
     return <ConversationLoading className="rounded-xl" />;

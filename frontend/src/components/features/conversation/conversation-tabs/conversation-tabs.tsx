@@ -7,6 +7,7 @@ import VSCodeIcon from "#/icons/vscode.svg?react";
 import ThreeDotsVerticalIcon from "#/icons/three-dots-vertical.svg?react";
 import LessonPlanIcon from "#/icons/lesson-plan.svg?react";
 import DoubleCheckIcon from "#/icons/double-check.svg?react";
+import ClockIcon from "#/icons/u-clock-three.svg?react";
 import { cn } from "#/utils/utils";
 import { useConversationLocalStorageState } from "#/utils/conversation-local-storage";
 import { ConversationTabNav } from "./conversation-tab-nav";
@@ -116,6 +117,16 @@ export function ConversationTabs() {
       tooltipAriaLabel: t(I18nKey.COMMON$TERMINAL),
       label: t(I18nKey.COMMON$TERMINAL),
       className: "pl-2",
+    },
+    {
+      // Fork-only tab: what this conversation cost in time and tokens.
+      tabValue: "stats",
+      isActive: isTabActive("stats"),
+      icon: ClockIcon,
+      onClick: () => selectTab("stats"),
+      tooltipContent: "Stats",
+      tooltipAriaLabel: "Stats",
+      label: "Stats",
     },
     {
       tabValue: "browser",

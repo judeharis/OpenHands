@@ -11,7 +11,8 @@ export type ConversationTab =
   | "vscode"
   | "terminal"
   | "planner"
-  | "tasklist";
+  | "tasklist"
+  | "stats"; // fork-only: what the conversation cost in time and tokens
 
 export type ConversationMode = "code" | "plan";
 
