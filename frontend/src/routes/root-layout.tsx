@@ -33,10 +33,32 @@ import { LoadingSpinner } from "#/components/shared/loading-spinner";
 import { useAppTitle } from "#/hooks/use-app-title";
 import { useAutoAcceptInvitation } from "#/hooks/use-auto-accept-invitation";
 import { usePostHogIdentify } from "#/hooks/use-posthog-identify";
+import {
+  reloadForStaleBuild,
+  shouldReloadForStaleBuild,
+  staleBuildReloadStarted,
+} from "#/utils/stale-build";
 
 export function ErrorBoundary() {
   const error = useRouteError();
   const { t } = useTranslation();
+
+  // A page from before a rebuild asking for a chunk that no longer exists: reload into
+  // the current build rather than replace the app with the error (see stale-build.ts).
+  const staleBuild = React.useMemo(
+    () => shouldReloadForStaleBuild(error),
+    [error],
+  );
+  React.useEffect(() => {
+    if (staleBuild) reloadForStaleBuild(error);
+  }, [staleBuild, error]);
+  if (staleBuild || staleBuildReloadStarted()) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <LoadingSpinner size="large" />
+      </div>
+    );
+  }
 
   if (isRouteErrorResponse(error)) {
     return (

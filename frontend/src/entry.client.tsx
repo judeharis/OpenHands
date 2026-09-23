@@ -12,6 +12,16 @@ import "./i18n";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./query-client-config";
 import { PostHogWrapper } from "./components/providers/posthog-wrapper";
+import { reloadForStaleBuild } from "./utils/stale-build";
+
+// A chunk from before a rebuild failed to load: reload into the current build (see
+// utils/stale-build.ts). Vite reports it here first; the root ErrorBoundary catches the
+// ones that reach rendering.
+window.addEventListener("vite:preloadError", (event) => {
+  if (reloadForStaleBuild((event as Event & { payload?: unknown }).payload)) {
+    event.preventDefault();
+  }
+});
 
 async function prepareApp() {
   if (
