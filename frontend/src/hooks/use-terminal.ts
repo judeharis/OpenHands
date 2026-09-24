@@ -3,6 +3,7 @@ import { Terminal } from "@xterm/xterm";
 import React from "react";
 import { Command, useCommandStore } from "#/stores/command-store";
 import { parseTerminalOutput } from "#/utils/parse-terminal-output";
+import { attachTouchScroll } from "#/utils/terminal-touch-scroll";
 
 /*
   NOTE: Tests for this hook are indirectly covered by the tests for the XTermTerminal component.
@@ -81,6 +82,7 @@ export const useTerminal = () => {
   const ref = React.useRef<HTMLDivElement>(null);
   const lastCommandIndex = persistentLastCommandIndex; // Use the persistent reference
   const isDisposed = React.useRef(false);
+  const detachTouch = React.useRef<(() => void) | null>(null);
 
   const createTerminal = () =>
     new Terminal({
@@ -109,6 +111,8 @@ export const useTerminal = () => {
       if (fitAddon.current) terminal.current.loadAddon(fitAddon.current);
       if (ref.current) {
         terminal.current.open(ref.current);
+        // Fork: xterm 6 does not scroll by touch (see utils/terminal-touch-scroll)
+        detachTouch.current = attachTouchScroll(terminal.current, ref.current);
         // Hide cursor for read-only terminal using ANSI escape sequence
         terminal.current.write("\x1b[?25l");
         fitTerminalSafely();
@@ -142,6 +146,8 @@ export const useTerminal = () => {
 
     return () => {
       isDisposed.current = true;
+      detachTouch.current?.();
+      detachTouch.current = null;
       terminal.current?.dispose();
       lastCommandIndex.current = 0;
     };

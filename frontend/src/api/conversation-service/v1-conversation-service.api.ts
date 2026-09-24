@@ -3,7 +3,7 @@ import { openHands } from "../open-hands-axios";
 import { ConversationTrigger, GetVSCodeUrlResponse } from "../open-hands.types";
 import { Provider } from "#/types/settings";
 import { SuggestedTask } from "#/utils/types";
-import { buildHttpBaseUrl } from "#/utils/websocket-url";
+import { buildHttpBaseUrl, extractPathPrefix } from "#/utils/websocket-url";
 import { buildSessionHeaders } from "#/utils/utils";
 import type {
   V1SendMessageRequest,
@@ -72,6 +72,7 @@ class V1ConversationService {
     plugins?: PluginSpec[],
     sandbox_id?: string,
     llm_model?: string,
+    initialImageUrls?: string[],
   ): Promise<V1AppConversationStartTask> {
     const body: V1AppConversationStartRequest = {
       selected_repository: selectedRepository,
@@ -88,14 +89,19 @@ class V1ConversationService {
     };
 
     // suggested_task implies the backend will construct the initial_message
-    if (!suggestedTask && initialUserMsg) {
+    // Fork: images attached on the home screen travel in the first message itself, as
+    // they do in a chat message (ImageContent with data URLs); no sandbox is needed.
+    const hasImages = !!initialImageUrls?.length;
+    if (!suggestedTask && (initialUserMsg || hasImages)) {
       body.initial_message = {
         role: "user",
         content: [
-          {
-            type: "text",
-            text: initialUserMsg,
-          },
+          ...(initialUserMsg
+            ? [{ type: "text" as const, text: initialUserMsg }]
+            : []),
+          ...(hasImages
+            ? [{ type: "image" as const, image_urls: initialImageUrls }]
+            : []),
         ],
       };
     }
@@ -150,6 +156,25 @@ class V1ConversationService {
     );
 
     return data.items;
+  }
+
+  /**
+   * The agent type a conversation was created with ("default" or "plan"). The conversation
+   * record does not carry it; the start task that created it does, in its request. The
+   * earliest task is the creating one -- a reopen adds later tasks for the same id.
+   */
+  static async getConversationAgentType(
+    conversationId: string,
+  ): Promise<"default" | "plan"> {
+    const params = new URLSearchParams({
+      conversation_id__eq: conversationId,
+      sort_order: "CREATED_AT",
+      limit: "1",
+    });
+    const { data } = await openHands.get<V1AppConversationStartTaskPage>(
+      `/api/v1/app-conversations/start-tasks/search?${params.toString()}`,
+    );
+    return data.items[0]?.request.agent_type ?? "default";
   }
 
   /**
@@ -505,6 +530,14 @@ class V1ConversationService {
     if (conversationUrl) {
       try {
         path = new URL(conversationUrl).pathname;
+        // Fork: buildRuntimeUrl already puts the proxy prefix (/sb/<port>) on the base,
+        // so it comes off the path here -- kept, it doubled into
+        // /sb/59047/sb/59047/api/conversations/... and every Display Cost showed
+        // "Not Found" behind the jentic proxy (2026-09-23).
+        const prefix = extractPathPrefix(conversationUrl);
+        if (prefix && path.startsWith(`${prefix}/`)) {
+          path = path.slice(prefix.length);
+        }
       } catch {
         // Malformed URL — fall back to the default LLM path; buildRuntimeUrl
         // will resolve the host against window.location.
@@ -608,6 +641,24 @@ class V1ConversationService {
       `/api/v1/app-conversations/${conversationId}`,
       { title },
     );
+    // Fork: the app keeps the title in its own database only. The agent-server's stays empty,
+    // so its first message auto-titled the conversation and the app copied that over the
+    // rename (a home-screen Plan became "Execute Build Plan", 2026-09-24). Set it there too;
+    // a sandbox that is not running keeps the app's title and is named again when it starts.
+    if (data?.conversation_url) {
+      try {
+        await axios.patch(
+          this.buildRuntimeUrl(
+            data.conversation_url,
+            `/api/conversations/${conversationId}`,
+          ),
+          { title },
+          { headers: buildSessionHeaders(data.session_api_key) },
+        );
+      } catch {
+        // the app's title stands
+      }
+    }
     return data;
   }
 }

@@ -1,17 +1,14 @@
-import { isFileImage } from "#/utils/is-file-image";
+import { isInlineImage } from "#/utils/is-file-image";
 import { displayErrorToast } from "#/utils/custom-toast-handlers";
 import { validateFiles } from "#/utils/file-validation";
 import { CustomChatInput } from "./custom-chat-input";
 import { useBtwInterceptor } from "#/hooks/chat/use-btw-interceptor";
 import { useModelInterceptor } from "#/hooks/chat/use-model-interceptor";
-import { AgentState } from "#/types/agent-state";
 import { useActiveConversation } from "#/hooks/query/use-active-conversation";
 import { GitControlBar } from "./git-control-bar";
 import { useConversationStore } from "#/stores/conversation-store";
-import { useAgentState } from "#/hooks/use-agent-state";
 import { processFiles, processImages } from "#/utils/file-processing";
 import { useSubConversationTaskPolling } from "#/hooks/query/use-sub-conversation-task-polling";
-import { isTaskPolling } from "#/utils/utils";
 
 interface InteractiveChatBoxProps {
   onSubmit: (message: string, images: File[], files: File[]) => void;
@@ -34,15 +31,14 @@ export function InteractiveChatBox({
     removeImageLoading,
     subConversationTaskId,
   } = useConversationStore();
-  const { curAgentState } = useAgentState();
   const { data: conversation } = useActiveConversation();
 
-  // Poll sub-conversation task to check if it's loading
-  const { taskStatus: subConversationTaskStatus } =
-    useSubConversationTaskPolling(
-      subConversationTaskId,
-      conversation?.id || null,
-    );
+  // Poll the sub-conversation (planner) task while it starts; messages typed meanwhile
+  // wait in queued-message-store instead of the composer being locked.
+  useSubConversationTaskPolling(
+    subConversationTaskId,
+    conversation?.id || null,
+  );
 
   // Helper function to validate and filter files
   const validateAndFilterFiles = (selectedFiles: File[]) => {
@@ -53,8 +49,8 @@ export function InteractiveChatBox({
       return null;
     }
 
-    const validFiles = selectedFiles.filter((f) => !isFileImage(f));
-    const validImages = selectedFiles.filter((f) => isFileImage(f));
+    const validFiles = selectedFiles.filter((f) => !isInlineImage(f));
+    const validImages = selectedFiles.filter((f) => isInlineImage(f));
 
     return { validFiles, validImages };
   };
@@ -152,11 +148,10 @@ export function InteractiveChatBox({
   };
 
   // Allow users to submit messages during LOADING state - they will be
-  // queued server-side and delivered when the conversation becomes ready
-  const isDisabled =
-    disabled ||
-    curAgentState === AgentState.AWAITING_USER_CONFIRMATION ||
-    isTaskPolling(subConversationTaskStatus);
+  // queued server-side and delivered when the conversation becomes ready.
+  // Fork: also while an action awaits approval (a reply rejects it, llmkit_live) and while
+  // the planner starts (the message waits in queued-message-store until it is up).
+  const isDisabled = disabled;
 
   return (
     <div data-testid="interactive-chat-box">

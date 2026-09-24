@@ -416,5 +416,115 @@
    }
   },
   "verdict": "auto"
+ },
+ {
+  "name": "relative path out of the workspace (another process's environment)",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "cat ../../proc/1/environ"
+   }
+  },
+  "verdict": "deny"
+ },
+ {
+  "name": "relative path that may leave the workspace, from wherever the shell is",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "cat ../README.md"
+   }
+  },
+  "verdict": "ask"
+ },
+ {
+  "name": "cd up may leave the workspace",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "cd .."
+   }
+  },
+  "verdict": "ask"
+ },
+ {
+  "name": "a bare cd goes to $HOME",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "cd"
+   }
+  },
+  "verdict": "deny"
+ },
+ {
+  "name": "ps printing every process's environment",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "ps auxe"
+   }
+  },
+  "verdict": "ask"
+ },
+ {
+  "name": "ps listing command lines",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "ps -eo args"
+   }
+  },
+  "verdict": "auto"
+ },
+ {
+  "name": "a variable as an argument",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "echo $OH_SESSION_API_KEYS_0"
+   }
+  },
+  "verdict": "ask"
+ },
+ {
+  "name": "a path carried in a long option",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "grep --file=/proc/1/environ x"
+   }
+  },
+  "verdict": "deny"
+ },
+ {
+  "name": "a path carried in a short option",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "grep -f/proc/1/environ x"
+   }
+  },
+  "verdict": "deny"
+ },
+ {
+  "name": "a regex anchor is not a variable",
+  "action": {
+   "tool_name": "terminal",
+   "action": {
+    "kind": "TerminalAction",
+    "command": "grep -n '^def .*$' a.py"
+   }
+  },
+  "verdict": "auto"
  }
 ]

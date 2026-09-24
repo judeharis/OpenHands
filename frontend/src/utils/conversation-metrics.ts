@@ -63,6 +63,19 @@ export function getCombinedMetrics(
     }
   }
 
+  // Fork: the context gauge is about the conversation, which is the agent's prompt.
+  // "The latest" per_turn_token above is whichever usage comes last -- the condenser,
+  // after the agent -- and a condenser that has not run reports 0: the gauge read
+  // "0 / 30,000" on a conversation whose agent had just sent 29,764 (2026-09-23).
+  const agentPerTurn =
+    stats.usage_to_metrics.agent?.accumulated_token_usage?.per_turn_token;
+  if (combinedTokenUsage && agentPerTurn) {
+    combinedTokenUsage = {
+      ...combinedTokenUsage,
+      per_turn_token: agentPerTurn,
+    };
+  }
+
   return {
     accumulated_cost: totalCost,
     max_budget_per_task: maxBudgetPerTask,

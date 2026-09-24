@@ -408,6 +408,9 @@ describe("RepoConnector", () => {
       undefined,
       undefined,
       undefined,
+      undefined, // sandboxId
+      undefined, // llm_model
+      undefined, // imageUrls
     );
   });
 

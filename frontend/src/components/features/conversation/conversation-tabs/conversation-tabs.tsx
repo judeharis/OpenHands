@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import TerminalIcon from "#/icons/terminal.svg?react";
 import GlobeIcon from "#/icons/globe.svg?react";
@@ -156,6 +156,49 @@ export function ConversationTabs() {
     (tab) => !persistedState.unpinnedTabs.includes(tab.tabValue),
   );
 
+  // Fork: which ends of the scrolling strip have tabs beyond them, so the strip can fade
+  // there. On a phone half the tabs are out of view, and a strip that simply stops
+  // gives no sign there is more.
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [moreBefore, setMoreBefore] = useState(false);
+  const [moreAfter, setMoreAfter] = useState(false);
+  const updateEdges = useCallback(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const max = strip.scrollWidth - strip.clientWidth;
+    setMoreBefore(strip.scrollLeft > 1);
+    setMoreAfter(strip.scrollLeft < max - 1);
+  }, []);
+
+  // The open tab grows a label; bring it into the strip's view rather than leave the
+  // tab the sheet belongs to scrolled out of sight.
+  useEffect(() => {
+    const strip = stripRef.current;
+    const tab =
+      isRightPanelShown && selectedTab
+        ? strip?.querySelector(
+            `[data-testid="conversation-tab-${selectedTab}"]`,
+          )
+        : null;
+    if (strip && tab) {
+      const s = strip.getBoundingClientRect();
+      const r = tab.getBoundingClientRect();
+      if (r.left < s.left) strip.scrollLeft -= s.left - r.left;
+      else if (r.right > s.right) strip.scrollLeft += r.right - s.right;
+    }
+    updateEdges();
+    window.addEventListener("resize", updateEdges);
+    return () => window.removeEventListener("resize", updateEdges);
+  }, [selectedTab, isRightPanelShown, visibleTabs.length, updateEdges]);
+
+  const fade = "black calc(100% - 20px), transparent";
+  let edgeMask: string | undefined;
+  if (moreBefore && moreAfter)
+    edgeMask = `linear-gradient(to right, transparent, black 20px, ${fade})`;
+  else if (moreBefore)
+    edgeMask = "linear-gradient(to right, transparent, black 20px)";
+  else if (moreAfter) edgeMask = `linear-gradient(to right, ${fade})`;
+
   return (
     <div
       className={cn(
@@ -165,41 +208,61 @@ export function ConversationTabs() {
         // 62 % of a 384 px phone left the conversation title 65 px -- "✨ Vi...".
         // Below sm the strip keeps under half the row and scrolls; the title,
         // which is the only thing naming the conversation, gets the rest.
-        "relative w-auto max-w-[50%] sm:max-w-[62%] shrink-0 lg:w-full lg:max-w-none",
-        "flex flex-row justify-end items-center gap-3 lg:gap-4.5 flex-nowrap overflow-x-auto lg:flex-wrap",
+        // On a desktop too: lg:w-full (upstream's, from when the tabs had a row of their
+        // own) took the whole row, left the title 0 px wide under the strip and pushed
+        // the ⋮ 12 px past the edge, where it could not be clicked (1600 px, 2026-09-23).
+        "relative w-auto max-w-[50%] sm:max-w-[62%] shrink-0 lg:w-auto lg:max-w-none",
+        "flex flex-row items-center gap-3 lg:gap-4.5 min-w-0",
       )}
     >
-      {visibleTabs.map(
-        (
-          {
-            tabValue,
-            icon,
-            onClick,
-            isActive,
-            tooltipContent,
-            tooltipAriaLabel,
-            label,
-            className,
-          },
-          index,
-        ) => (
-          <ChatActionTooltip
-            key={index}
-            tooltip={tooltipContent}
-            ariaLabel={tooltipAriaLabel}
-          >
-            <ConversationTabNav
-              tabValue={tabValue}
-              icon={icon}
-              onClick={onClick}
-              isActive={isActive}
-              label={label}
-              className={className}
-            />
-          </ChatActionTooltip>
-        ),
-      )}
-      <div className="relative">
+      {/* Fork: end-safe, not end. Right-aligned tabs that overflow spill off the left,
+          which a scroller cannot scroll to: on a 384 px phone Planner, Changes and Code
+          sat left of the strip with a scroll range of 0 (2026-09-23). Safe alignment
+          starts an overflowing strip at its first tab and scrolls to the rest; the ⋮
+          sits outside the scroller, so it is always in reach. */}
+      <div
+        ref={stripRef}
+        onScroll={updateEdges}
+        data-testid="conversation-tab-strip"
+        className="flex flex-row justify-end-safe items-center gap-3 lg:gap-4.5 flex-nowrap overflow-x-auto lg:flex-wrap min-w-0"
+        style={
+          edgeMask
+            ? { maskImage: edgeMask, WebkitMaskImage: edgeMask }
+            : undefined
+        }
+      >
+        {visibleTabs.map(
+          (
+            {
+              tabValue,
+              icon,
+              onClick,
+              isActive,
+              tooltipContent,
+              tooltipAriaLabel,
+              label,
+              className,
+            },
+            index,
+          ) => (
+            <ChatActionTooltip
+              key={index}
+              tooltip={tooltipContent}
+              ariaLabel={tooltipAriaLabel}
+            >
+              <ConversationTabNav
+                tabValue={tabValue}
+                icon={icon}
+                onClick={onClick}
+                isActive={isActive}
+                label={label}
+                className={className}
+              />
+            </ChatActionTooltip>
+          ),
+        )}
+      </div>
+      <div className="relative shrink-0">
         <button
           type="button"
           onClick={() => setIsMenuOpen(!isMenuOpen)}

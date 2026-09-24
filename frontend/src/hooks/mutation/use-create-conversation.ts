@@ -16,6 +16,10 @@ interface CreateConversationVariables {
   parentConversationId?: string;
   agentType?: "default" | "plan";
   plugins?: PluginSpec[];
+  /** Start in this sandbox (same workspace) instead of a new one. */
+  sandboxId?: string;
+  /** Images for the first message, as data URLs. */
+  imageUrls?: string[];
 }
 
 // Response type for V1 conversations
@@ -43,6 +47,8 @@ export const useCreateConversation = () => {
         parentConversationId,
         agentType,
         plugins,
+        sandboxId,
+        imageUrls,
       } = variables;
 
       // Use V1 API - creates a conversation start task
@@ -57,6 +63,9 @@ export const useCreateConversation = () => {
         parentConversationId,
         agentType,
         plugins,
+        sandboxId,
+        undefined, // llm_model - the default profile
+        imageUrls,
       );
 
       // Return a special task ID that the frontend will recognize

@@ -4,6 +4,8 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { CopyableContentWrapper } from "#/components/shared/buttons/copyable-content-wrapper";
 import { CollapsibleCode } from "./collapsible-code";
+import { ChoicePicker } from "#/components/features/chat/choice-picker";
+import { parseChoices } from "#/utils/parse-choices";
 
 const WRAP = {
   whiteSpace: "pre-wrap" as const,
@@ -24,6 +26,13 @@ export function code({
   ExtraProps) {
   const match = /language-(\w+)/.exec(className || ""); // get the language
   const codeString = String(children).replace(/\n$/, "");
+
+  // An agent asking the user to pick (jentic/AGENTS.md.tmpl): a picker, not code. A block
+  // that does not parse falls through and shows as the code it is.
+  if (match?.[1] === "choices") {
+    const questions = parseChoices(codeString);
+    if (questions) return <ChoicePicker questions={questions} raw={codeString} />;
+  }
 
   if (!match) {
     const isMultiline = String(children).includes("\n");

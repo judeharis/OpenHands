@@ -15,6 +15,7 @@ node run.mjs iter6 plan "…task…" "…follow-up sent after the first finish�
 node compare.mjs iter1 iter5                            # taps / time / auto-approved, vs a baseline
 node verify.mjs                                         # is the Continue button in view and unobscured?
 node reopen-smoke.mjs <conversation id>                 # an archived conversation: whole history, Reopen, live composer
+node tabstrip-check.mjs <conversation id> [width]       # can every header tab be scrolled into view?
 node cli-crosscheck.mjs answer <id> | ask "<task>"      # the phone half of cli/tests/e2e/crosscheck.sh
 ```
 

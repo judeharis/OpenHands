@@ -63,4 +63,20 @@ describe("Browser", () => {
     expect(screen.getByText("https://example.com")).toBeInTheDocument();
     expect(screen.getByAltText("BROWSER$SCREENSHOT_ALT")).toBeInTheDocument();
   });
+
+  // Fork: only the selected tab is mounted, so a reset on mount wiped the page the agent
+  // had browsed to whenever the Browser tab was opened after the fact.
+  it("keeps a page that arrived before the tab was opened", () => {
+    useBrowserStore.setState({
+      url: "https://example.com/earlier",
+      screenshotSrc:
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN0uGvyHwAFCAJS091fQwAAAABJRU5ErkJggg==",
+    });
+
+    render(<BrowserPanel />);
+
+    expect(screen.getByText("https://example.com/earlier")).toBeInTheDocument();
+    expect(screen.getByAltText("BROWSER$SCREENSHOT_ALT")).toBeInTheDocument();
+    expect(useBrowserStore.getState().screenshotSrc).not.toBe("");
+  });
 });

@@ -1,4 +1,5 @@
-import Markdown, { Components } from "react-markdown";
+import React from "react";
+import Markdown, { Components, ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { code } from "./code";
@@ -7,6 +8,18 @@ import { paragraph } from "./paragraph";
 import { anchor } from "./anchor";
 import { h1, h2, h3, h4, h5, h6 } from "./headings";
 import { table, th, td } from "./table";
+
+/**
+ * A fenced ```choices block becomes a picker (see ./code), which must not sit inside the
+ * <pre> react-markdown wraps every fenced block in: monospace and preserved whitespace. Every
+ * other block keeps its <pre> exactly as before.
+ */
+function pre({ children, node, ...rest }: React.HTMLAttributes<HTMLPreElement> & ExtraProps) {
+  const first = node?.children?.[0] as { properties?: { className?: unknown } } | undefined;
+  const cls = first?.properties?.className;
+  if (Array.isArray(cls) && cls.includes("language-choices")) return <>{children}</>;
+  return <pre {...rest}>{children}</pre>;
+}
 
 interface MarkdownRendererProps {
   /**
@@ -54,6 +67,7 @@ export function MarkdownRenderer({
   // Build the components object with defaults and optional additions
   const components: Components = {
     code,
+    pre,
     ul,
     ol,
     table,

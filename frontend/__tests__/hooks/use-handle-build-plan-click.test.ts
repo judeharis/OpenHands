@@ -3,7 +3,9 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { useHandleBuildPlanClick } from "#/hooks/use-handle-build-plan-click";
 import { useConversationStore } from "#/stores/conversation-store";
 import { useOptimisticUserMessageStore } from "#/stores/optimistic-user-message-store";
+import { useEventStore } from "#/stores/use-event-store";
 import { createChatMessage } from "#/services/chat-service";
+import { BUILD_PREAMBLE } from "#/utils/build-step";
 
 // Mock the send message hook - we'll mock the underlying WebSocket services
 vi.mock("#/hooks/use-send-message", () => ({
@@ -15,166 +17,132 @@ vi.mock("#/services/chat-service", () => ({
   createChatMessage: vi.fn(),
 }));
 
+// The plan-conversation handover (queries, router) is tested in use-build-in-code-agent.test;
+// here the conversation is a normal one unless a test says otherwise.
+const mockBuildInCodeAgent = vi.fn();
+const buildState = { isPlanConversation: false };
+vi.mock("#/hooks/use-build-in-code-agent", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("#/hooks/use-build-in-code-agent")>()),
+  useBuildInCodeAgent: () => ({
+    isPlanConversation: buildState.isPlanConversation,
+    buildInCodeAgent: mockBuildInCodeAgent,
+    isPending: false,
+  }),
+}));
+
+// PLAN.md is asked for on the active conversation's sandbox.
+vi.mock("#/hooks/query/use-active-conversation", () => ({
+  useActiveConversation: () => ({ data: { id: "conv1" } }),
+}));
+const readConversationFile = vi.fn();
+vi.mock("#/api/conversation-service/v1-conversation-service.api", () => ({
+  default: {
+    readConversationFile: (...a: unknown[]) => readConversationFile(...a),
+  },
+}));
+
 // Import mocked modules
 import { useSendMessage } from "#/hooks/use-send-message";
+
+const BUILD_STEP = `${BUILD_PREAMBLE}\n\nExecute the plan in .agents_tmp/PLAN.md, which the planning agent wrote.`;
+
+const reply = (text: string, isFromPlanningAgent: boolean) => ({
+  id: text,
+  timestamp: "",
+  source: "agent",
+  isFromPlanningAgent,
+  llm_message: { role: "assistant", content: [{ type: "text", text }] },
+});
 
 describe("useHandleBuildPlanClick", () => {
   const mockSend = vi.fn();
 
+  const click = async (event?: unknown) => {
+    const { result } = renderHook(() => useHandleBuildPlanClick());
+    await act(async () => {
+      await result.current.handleBuildPlanClick(
+        event as React.MouseEvent<HTMLButtonElement>,
+      );
+    });
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Reset store states
     useConversationStore.setState({
       conversationMode: "plan",
+      planContent: "# Plan",
     });
-    useOptimisticUserMessageStore.setState({
-      optimisticUserMessage: null,
-    });
-
-    // Setup send message hook mock
+    useOptimisticUserMessageStore.setState({ optimisticUserMessage: null });
+    useEventStore.setState({ events: [] });
+    readConversationFile.mockResolvedValue("");
     (useSendMessage as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       send: mockSend,
     });
-
-    // Setup chat service mock
-    (createChatMessage as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      action: "message",
-      args: {
-        content: "Execute the plan based on the .agents_tmp/PLAN.md file.",
-        image_urls: [],
-        file_urls: [],
-        timestamp: expect.any(String),
-      },
-    });
+    (createChatMessage as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (content: string) => ({ action: "message", args: { content } }),
+    );
   });
 
   afterEach(() => {
-    // Clean up store states
-    useConversationStore.setState({
-      conversationMode: "code",
-    });
-    useOptimisticUserMessageStore.setState({
-      optimisticUserMessage: null,
-    });
+    buildState.isPlanConversation = false;
+    useConversationStore.setState({ conversationMode: "code" });
   });
 
-  it("should switch conversation mode to code when handleBuildPlanClick is called", () => {
-    // Arrange
-    useConversationStore.setState({ conversationMode: "plan" });
-    const { result } = renderHook(() => useHandleBuildPlanClick());
-
-    // Act
-    act(() => {
-      result.current.handleBuildPlanClick();
-    });
-
-    // Assert
+  it("switches the same conversation from plan to code mode", async () => {
+    await click();
     expect(useConversationStore.getState().conversationMode).toBe("code");
   });
 
-  it("should send build prompt message when handleBuildPlanClick is called", () => {
-    // Arrange
-    const { result } = renderHook(() => useHandleBuildPlanClick());
-    const expectedPrompt =
-      "Execute the plan based on the .agents_tmp/PLAN.md file.";
+  it("tells the code agent to build, in a message the chat does not show", async () => {
+    await click();
 
-    // Act
-    act(() => {
-      result.current.handleBuildPlanClick();
-    });
-
-    // Assert
-    expect(createChatMessage).toHaveBeenCalledTimes(1);
     expect(createChatMessage).toHaveBeenCalledWith(
-      expectedPrompt,
+      BUILD_STEP,
       [],
       [],
       expect.any(String),
     );
     expect(mockSend).toHaveBeenCalledTimes(1);
-    expect(mockSend).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "message",
-        args: expect.objectContaining({
-          content: expectedPrompt,
-        }),
-      }),
-    );
+    // not shown as if the user had typed it
+    expect(
+      useOptimisticUserMessageStore.getState().optimisticUserMessage,
+    ).toBeNull();
   });
 
-  it("should set optimistic user message when handleBuildPlanClick is called", () => {
-    // Arrange
-    useOptimisticUserMessageStore.setState({ optimisticUserMessage: null });
-    const { result } = renderHook(() => useHandleBuildPlanClick());
-    const expectedPrompt =
-      "Execute the plan based on the .agents_tmp/PLAN.md file.";
-
-    // Act
-    act(() => {
-      result.current.handleBuildPlanClick();
+  it("inlines the planner's longest reply when PLAN.md was never written", async () => {
+    useConversationStore.setState({ planContent: null });
+    useEventStore.setState({
+      events: [
+        reply("step 1, step 2, step 3", true),
+        reply("click Build", true),
+        reply("a much longer reply from the code agent itself", false),
+      ] as never,
     });
 
-    // Assert
-    expect(useOptimisticUserMessageStore.getState().optimisticUserMessage).toBe(
-      expectedPrompt,
-    );
+    await click();
+
+    expect(readConversationFile).toHaveBeenCalledWith("conv1");
+    const text = (createChatMessage as unknown as ReturnType<typeof vi.fn>)
+      .mock.calls[0][0] as string;
+    expect(text.startsWith(BUILD_PREAMBLE)).toBe(true);
+    expect(text).toContain("step 1, step 2, step 3");
+    expect(text).not.toContain("code agent itself");
   });
 
-  it("should prevent default and stop propagation when event is provided", () => {
-    // Arrange
-    const { result } = renderHook(() => useHandleBuildPlanClick());
-    const mockEvent = {
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as React.MouseEvent<HTMLButtonElement>;
-
-    // Act
-    act(() => {
-      result.current.handleBuildPlanClick(mockEvent);
-    });
-
-    // Assert
-    expect(mockEvent.preventDefault).toHaveBeenCalledTimes(1);
-    expect(mockEvent.stopPropagation).toHaveBeenCalledTimes(1);
-  });
-
-  it("should handle call without event parameter", () => {
-    // Arrange
-    useConversationStore.setState({ conversationMode: "plan" });
-    useOptimisticUserMessageStore.setState({ optimisticUserMessage: null });
-    const { result } = renderHook(() => useHandleBuildPlanClick());
-
-    // Act & Assert - should not throw
-    act(() => {
-      result.current.handleBuildPlanClick();
-    });
-
-    // Assert all expected behaviors still occur
+  it("prevents default and stops propagation of a click or key", async () => {
+    const event = { preventDefault: vi.fn(), stopPropagation: vi.fn() };
+    await click(event);
+    expect(event.preventDefault).toHaveBeenCalledTimes(1);
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1);
     expect(useConversationStore.getState().conversationMode).toBe("code");
-    expect(mockSend).toHaveBeenCalledTimes(1);
-    expect(useOptimisticUserMessageStore.getState().optimisticUserMessage).toBe(
-      "Execute the plan based on the .agents_tmp/PLAN.md file.",
-    );
   });
 
-  it("should handle keyboard event", () => {
-    // Arrange
-    useConversationStore.setState({ conversationMode: "plan" });
-    const { result } = renderHook(() => useHandleBuildPlanClick());
-    const mockKeyboardEvent = {
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as KeyboardEvent;
+  it("hands over to a code agent instead when the conversation was started as a planner", async () => {
+    buildState.isPlanConversation = true;
+    await click();
 
-    // Act
-    act(() => {
-      result.current.handleBuildPlanClick(mockKeyboardEvent);
-    });
-
-    // Assert
-    expect(mockKeyboardEvent.preventDefault).toHaveBeenCalledTimes(1);
-    expect(mockKeyboardEvent.stopPropagation).toHaveBeenCalledTimes(1);
-    expect(useConversationStore.getState().conversationMode).toBe("code");
+    expect(mockBuildInCodeAgent).toHaveBeenCalledTimes(1);
+    expect(mockSend).not.toHaveBeenCalled();
+    expect(useConversationStore.getState().conversationMode).toBe("plan");
   });
 });

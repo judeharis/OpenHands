@@ -1400,6 +1400,31 @@ describe("Conversation WebSocket Handler", () => {
       });
     });
 
+    // Fork: the reset moved here from the Browser tab's mount.
+    it("opens a conversation with an empty browser, not the previous one's page", async () => {
+      useBrowserStore.setState({
+        url: "https://previous.example",
+        screenshotSrc: "data:image/png;base64,previous",
+      });
+
+      mswServer.use(
+        wsLink.addEventListener("connection", ({ server }) => {
+          server.connect();
+        }),
+      );
+
+      renderWithWebSocketContext(<ConnectionStatusComponent />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("connection-state")).toHaveTextContent(
+          "OPEN",
+        );
+      });
+      const { screenshotSrc, url } = useBrowserStore.getState();
+      expect(screenshotSrc).toBe("");
+      expect(url).toBe("");
+    });
+
     it("should not update browser store when BrowserObservation has no screenshot data", async () => {
       const initialScreenshot = useBrowserStore.getState().screenshotSrc;
 

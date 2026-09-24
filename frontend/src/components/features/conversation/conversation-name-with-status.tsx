@@ -7,6 +7,7 @@ import { useUnifiedPauseConversationSandbox } from "#/hooks/mutation/use-unified
 import { useUnifiedResumeConversationSandbox } from "#/hooks/mutation/use-unified-start-conversation";
 import { useReopenConversation } from "#/hooks/mutation/use-reopen-conversation";
 import { useUserProviders } from "#/hooks/use-user-providers";
+import { useBreakpoint } from "#/hooks/use-breakpoint";
 import { getStatusColor } from "#/utils/utils";
 import { AgentState } from "#/types/agent-state";
 import DebugStackframeDot from "#/icons/debug-stackframe-dot.svg?react";
@@ -24,6 +25,8 @@ export function ConversationNameWithStatus() {
     useUnifiedResumeConversationSandbox();
   const { mutate: reopenConversation } = useReopenConversation();
   const { providers } = useUserProviders();
+  const isPhone = useBreakpoint();
+  const [statusMenuOpen, setStatusMenuOpen] = React.useState(false);
 
   const isStartingStatus =
     curAgentState === AgentState.LOADING || curAgentState === AgentState.INIT;
@@ -59,30 +62,59 @@ export function ConversationNameWithStatus() {
     }
   };
 
+  const dot = (
+    <DebugStackframeDot
+      className="ml-[3.5px] w-6 h-6 cursor-pointer"
+      color={statusColor}
+    />
+  );
+
   return (
     <div className="flex items-center min-w-0">
       <div className="group relative shrink-0">
-        <DebugStackframeDot
-          className="ml-[3.5px] w-6 h-6 cursor-pointer"
-          color={statusColor}
-        />
-        <ServerStatusContextMenu
-          onClose={() => {}}
-          onStopServer={
-            conversation?.sandbox_status === "RUNNING"
-              ? handleStopServer
-              : undefined
-          }
-          onStartServer={
-            conversation?.sandbox_status === "MISSING"
-              ? handleStartServer
-              : undefined
-          }
-          sandboxStatus={conversation?.sandbox_status ?? null}
-          position="bottom"
-          className="opacity-0 invisible pointer-events-none group-hover:opacity-100 group-hover:visible group-hover:pointer-events-auto bottom-full left-0 mt-0 min-h-fit"
-          isPausing={false}
-        />
+        {isPhone ? (
+          // Fork: upstream shows this menu on hover, which a phone does not have, and the
+          // title box clipped it anyway. On a phone the dot is a button.
+          <button
+            type="button"
+            aria-label="Sandbox status"
+            aria-expanded={statusMenuOpen}
+            data-testid="server-status-dot"
+            className="flex"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setStatusMenuOpen((open) => !open);
+            }}
+          >
+            {dot}
+          </button>
+        ) : (
+          dot
+        )}
+        {(!isPhone || statusMenuOpen) && (
+          <ServerStatusContextMenu
+            onClose={isPhone ? () => setStatusMenuOpen(false) : () => {}}
+            onStopServer={
+              conversation?.sandbox_status === "RUNNING"
+                ? handleStopServer
+                : undefined
+            }
+            onStartServer={
+              conversation?.sandbox_status === "MISSING"
+                ? handleStartServer
+                : undefined
+            }
+            sandboxStatus={conversation?.sandbox_status ?? null}
+            position="bottom"
+            className={
+              isPhone
+                ? "left-0 mt-1 min-h-fit"
+                : "opacity-0 invisible pointer-events-none group-hover:opacity-100 group-hover:visible group-hover:pointer-events-auto bottom-full left-0 mt-0 min-h-fit"
+            }
+            isPausing={false}
+          />
+        )}
       </div>
       <ConversationName />
     </div>

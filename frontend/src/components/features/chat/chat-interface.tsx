@@ -11,6 +11,8 @@ import { useFilteredEvents } from "#/hooks/use-filtered-events";
 import { useScrollToBottom } from "#/hooks/use-scroll-to-bottom";
 import { useOpenAtBottom } from "#/hooks/use-open-at-bottom";
 import { TypingIndicator } from "./typing-indicator";
+import { ThinkingNote } from "./thinking-note";
+import { QueuedMessages } from "./queued-messages";
 import { ChatSuggestions } from "./chat-suggestions";
 import { ScrollProvider } from "#/context/scroll-context";
 import { useSendMessage } from "#/hooks/use-send-message";
@@ -38,6 +40,9 @@ import { useNewConversationCommand } from "#/hooks/mutation/use-new-conversation
 import { I18nKey } from "#/i18n/declaration";
 import { ArchivedBanner } from "./archived-banner";
 import { useModelStore } from "#/stores/model-store";
+import { useActiveConversation } from "#/hooks/query/use-active-conversation";
+import { usePendingFirstMessageStore } from "#/stores/pending-first-message-store";
+import { useStartPlanner } from "#/hooks/use-start-planner";
 
 export function ChatInterface() {
   const { setMessageToSend } = useConversationStore();
@@ -190,6 +195,34 @@ export function ChatInterface() {
     setMessageToSend("");
   };
 
+  // Fork: a first message from the home screen with files attached waits in
+  // pending-first-message-store, and is sent from here, the same way as one typed in
+  // this chat, once the sandbox the files are uploaded into is running and the socket
+  // is open. A home-screen Plan goes to a planner started inside this conversation
+  // instead (use-start-planner). Sent before the socket opened, it went to the server's pending-message
+  // queue, which is only emptied while a conversation starts -- after that, never
+  // (measured 2026-09-23: 201 Created, and no event ever reached the agent).
+  const { data: activeConversation } = useActiveConversation();
+  const startPlanner = useStartPlanner();
+  const pendingFor = usePendingFirstMessageStore(
+    (s) => s.pending?.conversationId,
+  );
+  const readyForFirstMessage =
+    !!activeConversation?.conversation_url &&
+    activeConversation.sandbox_status === "RUNNING" &&
+    conversationWebSocket?.connectionState === "OPEN";
+  React.useEffect(() => {
+    if (!readyForFirstMessage || !activeConversation) return;
+    const pending = usePendingFirstMessageStore
+      .getState()
+      .take(activeConversation.id);
+    if (pending?.mode === "plan") startPlanner(activeConversation.id, pending);
+    else if (pending)
+      handleSendMessage(pending.text, pending.images, pending.files);
+    // handleSendMessage is rebuilt every render; the message is taken once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyForFirstMessage, activeConversation?.id, pendingFor]);
+
   // Opening or reloading a conversation lands on the newest message, with no travel
   // through the history on the way.
   const { opened: restored } = useOpenAtBottom(scrollRef, {
@@ -298,6 +331,8 @@ export function ChatInterface() {
               answering a pending action must never require scrolling. */}
           <V1ConfirmationButtons />
           <BtwMessages conversationId={params.conversationId} />
+          <ThinkingNote />
+          <QueuedMessages />
           <div className="flex justify-between relative">
             <div className="flex items-end gap-1">
               <ConfirmationModeEnabled />

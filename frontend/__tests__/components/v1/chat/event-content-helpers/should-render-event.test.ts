@@ -7,6 +7,8 @@ import {
   createUserMessageEvent,
 } from "test-utils";
 import { ACPToolCallEvent } from "#/types/v1/core/events/acp-tool-call-event";
+import { HookExecutionEvent } from "#/types/v1/core/events/hook-execution-event";
+import { BUILD_PREAMBLE } from "#/utils/build-step";
 
 const makeACPEvent = (
   overrides: Partial<ACPToolCallEvent> = {},
@@ -80,5 +82,71 @@ describe("shouldRenderEvent - ACPToolCallEvent", () => {
     const event = makeACPEvent({ status: null });
 
     expect(shouldRenderEvent(event)).toBe(false);
+  });
+});
+
+describe("shouldRenderEvent - HookExecutionEvent", () => {
+  const makeHookEvent = (
+    overrides: Partial<HookExecutionEvent> = {},
+  ): HookExecutionEvent => ({
+    id: "hook-1",
+    kind: "HookExecutionEvent",
+    timestamp: "2024-01-01T00:00:00Z",
+    source: "hook",
+    hook_event_type: "PreToolUse",
+    hook_command: "/opt/llmkit/guard/guard.sh",
+    success: true,
+    blocked: false,
+    exit_code: 0,
+    reason: null,
+    tool_name: "terminal",
+    action_id: "action-1",
+    message_id: null,
+    stdout: "",
+    stderr: "",
+    error: null,
+    additional_context: null,
+    hook_input: null,
+    ...overrides,
+  });
+
+  it("hides a hook that passed", () => {
+    expect(shouldRenderEvent(makeHookEvent())).toBe(false);
+  });
+
+  it("shows a hook that blocked the action", () => {
+    expect(
+      shouldRenderEvent(
+        makeHookEvent({ success: false, blocked: true, exit_code: 2, reason: "privilege escalation" }),
+      ),
+    ).toBe(true);
+  });
+
+  it("shows a hook that failed", () => {
+    expect(
+      shouldRenderEvent(makeHookEvent({ success: false, exit_code: 1 })),
+    ).toBe(true);
+  });
+
+  it("shows a hook that errored", () => {
+    expect(
+      shouldRenderEvent(makeHookEvent({ error: "timed out" })),
+    ).toBe(true);
+  });
+});
+
+describe("shouldRenderEvent - the Build step", () => {
+  const userText = (text: string) =>
+    ({
+      ...createUserMessageEvent("m1"),
+      llm_message: { role: "user", content: [{ type: "text", text }] },
+    }) as never;
+
+  it("hides the message that switches a conversation from planning to building", () => {
+    expect(shouldRenderEvent(userText(`${BUILD_PREAMBLE}\n\nExecute the plan in .agents_tmp/PLAN.md.`))).toBe(false);
+  });
+
+  it("still shows what the user wrote", () => {
+    expect(shouldRenderEvent(userText("build it"))).toBe(true);
   });
 });

@@ -15,6 +15,7 @@ import { useActiveConversation } from "#/hooks/query/use-active-conversation";
 import { useUnifiedWebSocketStatus } from "#/hooks/use-unified-websocket-status";
 import { useSubConversationTaskPolling } from "#/hooks/query/use-sub-conversation-task-polling";
 import { useHandlePlanClick } from "#/hooks/use-handle-plan-click";
+import { useBuildInCodeAgent } from "#/hooks/use-build-in-code-agent";
 
 export function ChangeAgentButton() {
   const [contextMenuOpen, setContextMenuOpen] = useState<boolean>(false);
@@ -71,6 +72,14 @@ export function ChangeAgentButton() {
 
   // Get handlePlanClick and isCreatingConversation from custom hook
   const { handlePlanClick, isCreatingConversation } = useHandlePlanClick();
+
+  // A conversation started as a planner has no code mode to switch to; it gets a Build
+  // button instead of the Code/Plan chip, whose "Code" was only the store's default.
+  const {
+    isPlanConversation,
+    buildInCodeAgent,
+    isPending: isBuildPending,
+  } = useBuildInCodeAgent();
 
   // Close context menu when agent starts running
   useEffect(() => {
@@ -148,6 +157,32 @@ export function ChangeAgentButton() {
   }, [isExecutionAgent]);
 
   if (isAcp) return null;
+
+  if (isPlanConversation) {
+    const disabled = isAgentRunning || isBuildPending;
+    return (
+      <button
+        type="button"
+        data-testid="plan-conversation-build-button"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          buildInCodeAgent();
+        }}
+        disabled={disabled}
+        title="Start a code agent in this sandbox with the plan"
+        className={cn(
+          "flex items-center gap-1 pl-1.5 pr-3 border border-[#597FF4] bg-[#4A67BD] rounded-[100px] transition-opacity",
+          disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:opacity-80",
+        )}
+      >
+        <CodeTagIcon width={18} height={18} color="#ffffff" />
+        <Typography.Text className="text-white text-2.75 not-italic font-normal leading-5">
+          {t(I18nKey.COMMON$BUILD)}
+        </Typography.Text>
+      </button>
+    );
+  }
 
   return (
     <div className="relative">

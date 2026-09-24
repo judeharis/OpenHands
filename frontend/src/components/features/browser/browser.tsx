@@ -1,16 +1,11 @@
-import { useEffect } from "react";
 import { BrowserSnapshot } from "./browser-snapshot";
 import { EmptyBrowserMessage } from "./empty-browser-message";
-import { useConversationId } from "#/hooks/use-conversation-id";
 import { useBrowserStore } from "#/stores/browser-store";
 
 export function BrowserPanel() {
-  const { url, screenshotSrc, reset } = useBrowserStore();
-  const { conversationId } = useConversationId();
-
-  useEffect(() => {
-    reset();
-  }, [conversationId, reset]);
+  // No reset on mount: only the selected tab is mounted, so opening this tab would wipe
+  // the page the agent is on. The conversation websocket clears it on a conversation change.
+  const { url, screenshotSrc } = useBrowserStore();
 
   const imgSrc = screenshotSrc?.startsWith("data:image/png;base64,")
     ? screenshotSrc

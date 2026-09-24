@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import V1ConversationService from "#/api/conversation-service/v1-conversation-service.api";
 import { useConversationId } from "#/hooks/use-conversation-id";
+import { usePendingFirstMessageStore } from "#/stores/pending-first-message-store";
 
 /**
  * Hook that polls V1 conversation start tasks and navigates when ready.
@@ -54,6 +55,9 @@ export const useTaskPolling = () => {
   useEffect(() => {
     const task = taskQuery.data;
     if (task?.status === "READY" && task.app_conversation_id) {
+      usePendingFirstMessageStore
+        .getState()
+        .resolve(task.id, task.app_conversation_id);
       // Replace the URL with the actual conversation ID
       navigate(`/conversations/${task.app_conversation_id}`, { replace: true });
     }

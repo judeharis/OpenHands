@@ -57,6 +57,11 @@ import type {
 import EventService from "#/api/event-service/event-service.api";
 import PendingMessageService from "#/api/pending-message-service/pending-message-service.api";
 import { useConversationStore } from "#/stores/conversation-store";
+import { takeThinkingNote } from "#/stores/thinking-note-store";
+import {
+  messageText,
+  useQueuedMessageStore,
+} from "#/stores/queued-message-store";
 import { isBudgetOrCreditError, trackError } from "#/utils/error-handler";
 import { useReadConversationFile } from "#/hooks/mutation/use-read-conversation-file";
 import useMetricsStore from "#/stores/metrics-store";
@@ -234,6 +239,39 @@ export function ConversationWebSocketProvider({
   const isPlanFilePath = (path: string | null): boolean =>
     path?.toUpperCase().endsWith("PLAN.MD") ?? false;
 
+  // Fork: a conversation started as a planner (Plan on the home screen, `jentic-cli plan`)
+  // writes PLAN.md on its own socket, not a planning sub-conversation's, and upstream only
+  // read the plan for the latter: the Planner tab said "no plan" beside a finished one
+  // (2026-09-23). A replay carries every edit of the plan, so the file is read once, after
+  // the last of them.
+  const mainPlanReadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readMainPlan = useCallback(
+    (path: string) => {
+      if (!conversationId) return;
+      if (mainPlanReadTimer.current) clearTimeout(mainPlanReadTimer.current);
+      mainPlanReadTimer.current = setTimeout(() => {
+        mainPlanReadTimer.current = null;
+        readConversationFile(
+          { conversationId, filePath: path },
+          {
+            onSuccess: (fileContent) => setPlanContent(fileContent),
+            onError: (error) => {
+              // eslint-disable-next-line no-console
+              console.warn("Failed to read conversation file:", error);
+            },
+          },
+        );
+      }, 300);
+    },
+    [conversationId, readConversationFile, setPlanContent],
+  );
+  useEffect(
+    () => () => {
+      if (mainPlanReadTimer.current) clearTimeout(mainPlanReadTimer.current);
+    },
+    [conversationId],
+  );
+
   // Helper to handle error clearing logic for non-error events.
   // Budget/credit errors persist until an agent event proves the LLM is working.
   const handleNonErrorEvent = useCallback(
@@ -402,6 +440,10 @@ export function ConversationWebSocketProvider({
     setIsLoadingHistoryMain(true);
     // Reset the tracked event ref when conversation changes
     latestPlanningFileEventRef.current = null;
+    // The Browser tab's page belongs to the conversation, so it is cleared here, before
+    // this conversation's replay refills it -- not when the tab mounts, which wiped every
+    // screenshot that arrived while another tab was open.
+    useBrowserStore.getState().reset();
   }, [conversationId]);
 
   const { data: preloadedEvents, isFetched: isHistoryFetched } =
@@ -431,6 +473,8 @@ export function ConversationWebSocketProvider({
     (messageEvent: MessageEvent) => {
       try {
         const event = JSON.parse(messageEvent.data);
+        // Fork: a live-only note on the agent's thinking (llmkit_live), not a chat event.
+        if (takeThinkingNote(event, false)) return;
         const replay = replayMainRef.current;
         const replayed = countReplayed(replay, event);
 
@@ -585,6 +629,14 @@ export function ConversationWebSocketProvider({
           if (isBrowserNavigateActionEvent(event)) {
             useBrowserStore.getState().setUrl(event.action.url);
           }
+
+          if (
+            isPlanningFileEditorObservationEvent(event) &&
+            event.observation.path &&
+            isPlanFilePath(event.observation.path)
+          ) {
+            readMainPlan(event.observation.path);
+          }
         }
 
         if (replayComplete(replay)) endReplay(replay);
@@ -607,6 +659,7 @@ export function ConversationWebSocketProvider({
       appendInput,
       appendOutput,
       updateMetricsFromStats,
+      readMainPlan,
     ],
   );
 
@@ -614,6 +667,7 @@ export function ConversationWebSocketProvider({
     (messageEvent: MessageEvent) => {
       try {
         const event = JSON.parse(messageEvent.data);
+        if (takeThinkingNote(event, true)) return;
         const replay = replayPlanningRef.current;
         const replayed = countReplayed(replay, event);
 
@@ -951,6 +1005,20 @@ export function ConversationWebSocketProvider({
         currentMode === "plan" ? planningAgentSocket : mainSocket;
 
       if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
+        // Fork: a started conversation whose socket is down (connecting, reconnecting, or a
+        // planner still starting) keeps the message here until that socket opens. The REST
+        // queue below is emptied only while a conversation starts, so it lost these, and in
+        // plan mode it delivered them to the code agent instead of the planner.
+        if (conversationId && !conversationId.startsWith("task-")) {
+          useQueuedMessageStore.getState().add({
+            conversationId,
+            target: currentMode === "plan" ? "plan" : "main",
+            message,
+            text: messageText(message),
+          });
+          return { queued: true };
+        }
+
         // WebSocket not connected - queue message via REST API
         // Message will be delivered automatically when conversation becomes ready
         if (!conversationId) {
@@ -990,6 +1058,27 @@ export function ConversationWebSocketProvider({
     },
     [mainSocket, planningAgentSocket, setErrorMessage, conversationId],
   );
+
+  // Fork: send what waited in the queue, in order, once its socket is open.
+  useEffect(() => {
+    const flush = () => {
+      const { items, remove } = useQueuedMessageStore.getState();
+      const blocked = new Set<string>();
+      items
+        .filter((item) => item.conversationId === conversationId)
+        .forEach((item) => {
+          if (blocked.has(item.target)) return;
+          const socket =
+            item.target === "plan" ? planningAgentSocket : mainSocket;
+          if (socket?.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(item.message));
+            remove(item.id);
+          } else blocked.add(item.target);
+        });
+    };
+    const timer = setInterval(flush, 1000);
+    return () => clearInterval(timer);
+  }, [conversationId, mainSocket, planningAgentSocket]);
 
   // Track main socket state changes
   useEffect(() => {

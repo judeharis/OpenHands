@@ -1,6 +1,7 @@
+import { BUILD_PREAMBLE } from "#/utils/build-step";
 import React from "react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "test-utils";
 import { PlanPreview } from "#/components/features/chat/plan-preview";
@@ -163,11 +164,14 @@ describe("PlanPreview", () => {
     expect(useConversationStore.getState().conversationMode).toBe("code");
   });
 
-  it("should send build prompt message when Build button is clicked", async () => {
+  // Fork: Build is an internal switch. The code agent gets the Build step, which the chat
+  // does not show, instead of a visible "Execute the plan ..." as if the user had typed it.
+  it("should send the Build step when Build button is clicked", async () => {
     // Arrange
+    useConversationStore.setState({ planContent: "Plan content" });
+    useOptimisticUserMessageStore.setState({ optimisticUserMessage: null });
     const user = userEvent.setup();
-    const expectedPrompt =
-      "Execute the plan based on the .agents_tmp/PLAN.md file.";
+    const expectedPrompt = `${BUILD_PREAMBLE}\n\nExecute the plan in .agents_tmp/PLAN.md, which the planning agent wrote.`;
     renderPlanPreview(<PlanPreview planContent="Plan content" />);
     const buildButton = screen.getByTestId("plan-preview-build-button");
 
@@ -175,40 +179,16 @@ describe("PlanPreview", () => {
     await user.click(buildButton);
 
     // Assert
-    expect(createChatMessage).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mockSend).toHaveBeenCalledTimes(1));
     expect(createChatMessage).toHaveBeenCalledWith(
       expectedPrompt,
       [],
       [],
       expect.any(String),
     );
-    expect(mockSend).toHaveBeenCalledTimes(1);
-    expect(mockSend).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "message",
-        args: expect.objectContaining({
-          content: expectedPrompt,
-        }),
-      }),
-    );
-  });
-
-  it("should set optimistic user message when Build button is clicked", async () => {
-    // Arrange
-    useOptimisticUserMessageStore.setState({ optimisticUserMessage: null });
-    const user = userEvent.setup();
-    const expectedPrompt =
-      "Execute the plan based on the .agents_tmp/PLAN.md file.";
-    renderPlanPreview(<PlanPreview planContent="Plan content" />);
-    const buildButton = screen.getByTestId("plan-preview-build-button");
-
-    // Act
-    await user.click(buildButton);
-
-    // Assert
-    expect(useOptimisticUserMessageStore.getState().optimisticUserMessage).toBe(
-      expectedPrompt,
-    );
+    expect(
+      useOptimisticUserMessageStore.getState().optimisticUserMessage,
+    ).toBeNull();
   });
 
   it("should disable Build button when isBuildDisabled is true", () => {

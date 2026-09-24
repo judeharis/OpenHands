@@ -14,7 +14,9 @@ interface BrowserStore extends BrowserState {
 }
 
 const initialState: BrowserState = {
-  url: "https://github.com/OpenHands/OpenHands",
+  // Fork: empty, not upstream's placeholder -- the tab showed github.com/OpenHands/OpenHands
+  // over "no page loaded" in every conversation that had not browsed.
+  url: "",
   screenshotSrc: "",
 };
 

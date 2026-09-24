@@ -10,6 +10,7 @@ import { displaySuccessToast } from "#/utils/custom-toast-handlers";
 import { I18nKey } from "#/i18n/declaration";
 import { resolveAgentChip } from "#/utils/agent-display-label";
 import { AgentChipIcon } from "#/components/shared/agent-chip-icon";
+import { useBreakpoint } from "#/hooks/use-breakpoint";
 import { EllipsisButton } from "../conversation-panel/ellipsis-button";
 import { ConversationNameContextMenu } from "./conversation-name-context-menu";
 import { SystemMessageModal } from "../conversation-panel/system-message-modal";
@@ -28,6 +29,7 @@ export function ConversationName() {
 
   const [titleMode, setTitleMode] = React.useState<"view" | "edit">("view");
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
+  const isPhone = useBreakpoint();
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   // Use the custom hook for context menu handlers
@@ -118,6 +120,15 @@ export function ConversationName() {
     setContextMenuOpen(!contextMenuOpen);
   };
 
+  // Fork: on a phone a tap on the title opens its menu, which starts with Rename. The
+  // title only answered a double-click, so on a phone it looked dead.
+  const handleTitleTap = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPhone) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setContextMenuOpen(!contextMenuOpen);
+  };
+
   const handleRename = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -163,6 +174,7 @@ export function ConversationName() {
           <div
             className="text-white leading-5 min-w-0 flex-1 max-w-full truncate"
             data-testid="conversation-name-title"
+            onClick={handleTitleTap}
             onDoubleClick={handleDoubleClick}
             title={conversation.title || ""}
           >

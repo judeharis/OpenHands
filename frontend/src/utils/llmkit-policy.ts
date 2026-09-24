@@ -100,6 +100,55 @@ const CURL_UNSAFE = new Set([
 ]);
 const SHELL_UNSAFE = ["`", "$(", "<(", ">(", ">", "<"];
 const GRANT_FORMS = ["tool:", "kind:", "write:", "cmd:", "view:"];
+// ps options that take a value: that value is not a cluster of BSD flags
+const PS_VALUE_OPTIONS = new Set([
+  "-o",
+  "-O",
+  "-p",
+  "-q",
+  "-u",
+  "-U",
+  "-g",
+  "-G",
+  "-t",
+  "-C",
+  "-s",
+  "-k",
+  "o",
+  "O",
+  "p",
+  "U",
+  "t",
+  "--pid",
+  "--ppid",
+  "--sort",
+  "--format",
+  "--user",
+  "--group",
+  "--cols",
+  "--rows",
+  "--width",
+]);
+
+/** The token, and the path an option carries in it: --file=/x, -f/x. */
+function pathCandidates(tok: string): string[] {
+  const out = [tok];
+  if (tok.startsWith("-")) {
+    if (tok.includes("=")) out.push(tok.slice(tok.indexOf("=") + 1));
+    else if (!tok.startsWith("--") && tok.length > 2) out.push(tok.slice(2));
+  }
+  return out;
+}
+
+/** ps's BSD `e` flag (ps e, ps auxe, ps eww) prints every process's environment. */
+function psShowsEnvironment(args: string[]): boolean {
+  return args.some(
+    (tok, i) =>
+      !(i > 0 && PS_VALUE_OPTIONS.has(args[i - 1])) &&
+      /^[A-Za-z]+$/.test(tok) &&
+      tok.includes("e"),
+  );
+}
 const WRITE_COMMANDS = new Set([
   "create",
   "str_replace",
@@ -225,19 +274,30 @@ export function commandAllowed(
     if (argv.length === 0) return [false, "empty segment"];
     if (argv[0].includes("=")) return [false, "environment assignment"];
     for (let t = 0; t < argv.length; t += 1) {
-      const tok = argv[t];
-      if (tok.startsWith("~")) return [false, "outside workspace"];
-      if (
-        tok.startsWith("/") &&
-        !SAFE_PATHS.has(tok) &&
-        !pathUnder(tok, workspace, projectDir)
-      )
-        return [false, "outside workspace"];
+      const candidates = pathCandidates(argv[t]);
+      for (let c = 0; c < candidates.length; c += 1) {
+        const cand = candidates[c];
+        if (cand.startsWith("~")) return [false, "outside workspace"];
+        if (cand.startsWith("/")) {
+          if (!SAFE_PATHS.has(cand) && !pathUnder(cand, workspace, projectDir))
+            return [false, "outside workspace"];
+        } else if (cand.split("/").includes("..")) {
+          // judged from the project dir, but the shell may be anywhere under the
+          // workspace: `..` is never automatic (see llmkit_policy/core.py)
+          if (!pathUnder(cand, workspace, projectDir))
+            return [false, "outside workspace"];
+          return [false, "relative path with .."];
+        } else if (cand.startsWith("$")) {
+          return [false, "variable in an argument"];
+        }
+      }
     }
     if (argv[0] === "cd") {
-      const target = argv.length > 1 ? argv[1] : projectDir;
-      if (!pathUnder(target, workspace, projectDir))
+      // a bare cd goes to $HOME
+      if (argv.length === 1 || !pathUnder(argv[1], workspace, projectDir))
         return [false, "outside workspace"];
+    } else if (argv[0] === "ps" && psShowsEnvironment(argv.slice(1))) {
+      return [false, "ps showing process environments"];
     } else {
       if (argv[0] === "find" && argv.some((a) => FIND_UNSAFE.has(a)))
         return [false, "find with an action flag"];

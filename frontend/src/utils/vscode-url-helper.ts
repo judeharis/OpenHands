@@ -20,6 +20,11 @@ export function transformVSCodeUrl(vsCodeUrl: string | null): string | null {
     ) {
       // Replace localhost with the current hostname
       url.hostname = window.location.hostname;
+      // Fork: and the scheme. The backend's URL is http://localhost; over the tailnet the
+      // page is https, where an http frame is mixed content (blocked, and reported as
+      // "cross-origin cookies") and the proxy's tailnet port only speaks https, so "Open
+      // in New Tab" landed on a 400 as well (2026-09-23).
+      url.protocol = window.location.protocol;
       return url.toString();
     }
 

@@ -11,6 +11,7 @@ import {
   isStreamingDeltaEvent,
   isV1Event,
 } from "#/types/v1/type-guards";
+import { isBuildStepText } from "#/utils/build-step";
 
 export const shouldRenderEvent = (event: OpenHandsEvent) => {
   // Explicitly exclude system events that should not be rendered in chat
@@ -45,9 +46,15 @@ export const shouldRenderEvent = (event: OpenHandsEvent) => {
     return true;
   }
 
-  // Render message events (user and assistant messages)
+  // Render message events (user and assistant messages), except the Build step: the
+  // switch from planning to building is internal, not something the user said.
   if (isMessageEvent(event)) {
-    return true;
+    const first = event.llm_message.content[0];
+    return !(
+      event.llm_message.role === "user" &&
+      first?.type === "text" &&
+      isBuildStepText(first.text)
+    );
   }
 
   // Render streaming token deltas (the live, growing assistant bubble).
@@ -61,9 +68,11 @@ export const shouldRenderEvent = (event: OpenHandsEvent) => {
     return true;
   }
 
-  // Render hook execution events
+  // Render hook execution events only when they did something. jentic's workspace
+  // guard runs before every tool call (matcher "*"), so a passing hook is one
+  // "ok" row per action; only a block or a failure is worth the user's attention.
   if (isHookExecutionEvent(event)) {
-    return true;
+    return event.blocked || !event.success || Boolean(event.error);
   }
 
   // Render ACP sub-agent tool call events only once they've reached a

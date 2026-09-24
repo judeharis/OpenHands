@@ -38,6 +38,12 @@ const {
   })),
 }));
 
+// Fork: phone behaviour is switched on per test; everything else runs as a desktop.
+const { isPhoneMock } = vi.hoisted(() => ({ isPhoneMock: vi.fn(() => false) }));
+vi.mock("#/hooks/use-breakpoint", () => ({
+  useBreakpoint: () => isPhoneMock(),
+}));
+
 vi.mock("#/hooks/query/use-active-conversation", () => ({
   useActiveConversation: () => useActiveConversationMock(),
 }));
@@ -124,6 +130,29 @@ describe("ConversationName", () => {
     expect(container).toBeInTheDocument();
     expect(titleElement).toBeInTheDocument();
     expect(titleElement).toHaveTextContent("Test Conversation");
+  });
+
+  // Fork: the title only answered a double-click, so on a phone it looked dead.
+  it("on a phone, opens its menu, Rename first, when the title is tapped", async () => {
+    isPhoneMock.mockReturnValue(true);
+    const user = userEvent.setup();
+    renderConversationNameWithRouter();
+
+    await user.click(screen.getByTestId("conversation-name-title"));
+
+    const menu = await screen.findByTestId("conversation-name-context-menu");
+    expect(within(menu).getByTestId("rename-button")).toBeInTheDocument();
+  });
+
+  it("on a desktop, leaves a single click on the title alone", async () => {
+    const user = userEvent.setup();
+    renderConversationNameWithRouter();
+
+    await user.click(screen.getByTestId("conversation-name-title"));
+
+    expect(
+      screen.queryByTestId("conversation-name-context-menu"),
+    ).not.toBeInTheDocument();
   });
 
   it("should switch to edit mode on double click", async () => {
@@ -349,7 +378,11 @@ describe("ConversationName", () => {
           {
             key: "claude-code",
             display_name: "Claude Code",
-            default_command: ["npx", "-y", "@agentclientprotocol/claude-agent-acp"],
+            default_command: [
+              "npx",
+              "-y",
+              "@agentclientprotocol/claude-agent-acp",
+            ],
           },
         ],
       },
@@ -379,7 +412,11 @@ describe("ConversationName", () => {
           {
             key: "claude-code",
             display_name: "Claude Code",
-            default_command: ["npx", "-y", "@agentclientprotocol/claude-agent-acp"],
+            default_command: [
+              "npx",
+              "-y",
+              "@agentclientprotocol/claude-agent-acp",
+            ],
             available_models: [
               { id: "anthropic/claude-opus-4-1", label: "Claude Opus 4.1" },
             ],
@@ -416,7 +453,11 @@ describe("ConversationName", () => {
           {
             key: "claude-code",
             display_name: "Claude Code",
-            default_command: ["npx", "-y", "@agentclientprotocol/claude-agent-acp"],
+            default_command: [
+              "npx",
+              "-y",
+              "@agentclientprotocol/claude-agent-acp",
+            ],
           },
         ],
       },

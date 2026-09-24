@@ -201,7 +201,9 @@ describe("InteractiveChatBox", () => {
     expect(onSubmitMock).toHaveBeenCalledWith("Hello, world!", [], []);
   });
 
-  it("should disable the submit button when awaiting user confirmation", async () => {
+  // Fork: a reply while an action awaits approval is allowed; the sandbox rejects the
+  // pending action with the reply as the reason instead of running it (llmkit_live).
+  it("lets the user reply while an action awaits confirmation", async () => {
     const user = userEvent.setup();
     mockStores(AgentState.AWAITING_USER_CONFIRMATION);
 
@@ -209,11 +211,15 @@ describe("InteractiveChatBox", () => {
       onSubmit: onSubmitMock,
     });
 
-    const button = screen.getByTestId("submit-button");
-    expect(button).toBeDisabled();
-
-    await user.click(button);
-    expect(onSubmitMock).not.toHaveBeenCalled();
+    const chatInput = screen.getByTestId("chat-input");
+    expect(chatInput).toHaveAttribute("contenteditable", "true");
+    await user.type(chatInput, "no, use a while loop");
+    // the component reads innerText, which jsdom does not fill from typing
+    chatInput.innerText = "no, use a while loop";
+    const submitButton = screen.getByTestId("submit-button");
+    expect(submitButton).not.toBeDisabled();
+    await user.click(submitButton);
+    expect(onSubmitMock).toHaveBeenCalledWith("no, use a while loop", [], []);
   });
 
   it("should lock the text input field when disabled prop is true (isNewConversationPending)", () => {
