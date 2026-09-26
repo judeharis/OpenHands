@@ -47,7 +47,9 @@ export const useStartPlanner = () => {
             conversationId,
             files: pending.files,
           });
-          result.skipped_files.forEach((f) => displayErrorToast(f.reason));
+          result.skipped_files.forEach((f) =>
+            displayErrorToast(`${f.name} was not attached: ${f.reason}`),
+          );
           uploadedFiles = result.uploaded_files;
         }
       } catch {

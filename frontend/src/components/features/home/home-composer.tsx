@@ -6,6 +6,7 @@ import CodeTagIcon from "#/icons/code-tag.svg?react";
 import LessonPlanIcon from "#/icons/lesson-plan.svg?react";
 import { ChatSendButton } from "#/components/features/chat/chat-send-button";
 import { ChatAddFileButton } from "#/components/features/chat/chat-add-file-button";
+import { ChatMicButton } from "#/components/features/chat/chat-mic-button";
 import { HiddenFileInput } from "#/components/features/chat/components/hidden-file-input";
 import { UploadedFile } from "#/components/features/chat/uploaded-file";
 import { UploadedImage } from "#/components/features/chat/uploaded-image";
@@ -13,6 +14,7 @@ import { usePendingFirstMessageStore } from "#/stores/pending-first-message-stor
 import { convertImageToBase64 } from "#/utils/convert-image-to-base-64";
 import { displayErrorToast } from "#/utils/custom-toast-handlers";
 import { validateFiles } from "#/utils/file-validation";
+import { snapshotFile } from "#/utils/file-processing";
 import { isInlineImage } from "#/utils/is-file-image";
 import { useCreateConversation } from "#/hooks/mutation/use-create-conversation";
 import { useIsCreatingConversation } from "#/hooks/use-is-creating-conversation";
@@ -65,12 +67,20 @@ export function HomeComposer() {
     isPreparing || isPending || isSuccess || isCreatingConversationElsewhere;
   const hasAttachments = images.length + files.length > 0;
 
-  const attach = (selected: File[]) => {
-    const validation = validateFiles(selected, [...images, ...files]);
+  const attach = async (picked: File[]) => {
+    const validation = validateFiles(picked, [...images, ...files]);
     if (!validation.isValid) {
       displayErrorToast(`Error: ${validation.errorMessage}`);
       return;
     }
+    // In-memory copies: these wait for the sandbox, and a phone's picked File can
+    // no longer be read by then (snapshotFile)
+    const results = await Promise.allSettled(picked.map(snapshotFile));
+    const selected: File[] = [];
+    results.forEach((result) => {
+      if (result.status === "fulfilled") selected.push(result.value);
+      else displayErrorToast(String(result.reason?.message ?? result.reason));
+    });
     setImages((prev) => [...prev, ...selected.filter(isInlineImage)]);
     setFiles((prev) => [
       ...prev,
@@ -84,6 +94,9 @@ export function HomeComposer() {
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
   };
+
+  // Dictation sets the value without an input event, so the height follows the value itself.
+  React.useLayoutEffect(resize, [value]);
 
   // `query` is given only by "Start an empty conversation", which leaves attachments out.
   const start = async (query?: string) => {
@@ -199,6 +212,16 @@ export function HomeComposer() {
                 handleFileIconClick={() =>
                   !isBusy && fileInputRef.current?.click()
                 }
+              />
+            </span>
+            <span className="flex items-center justify-center min-w-9 min-h-9">
+              <ChatMicButton
+                disabled={isBusy}
+                onTranscript={(text) => {
+                  setValue((v) =>
+                    v && !/\s$/.test(v) ? `${v} ${text}` : v + text,
+                  );
+                }}
               />
             </span>
             <HiddenFileInput

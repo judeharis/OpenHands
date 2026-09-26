@@ -7,6 +7,7 @@ import { useStartTasks } from "#/hooks/query/use-start-tasks";
 import { useInfiniteScroll } from "#/hooks/use-infinite-scroll";
 import { useDeleteConversation } from "#/hooks/mutation/use-delete-conversation";
 import { useUnifiedPauseConversationSandbox } from "#/hooks/mutation/use-unified-stop-conversation";
+import { useDeleteConversationSandbox } from "#/hooks/mutation/use-delete-conversation-sandbox";
 import { ConfirmDeleteModal } from "./confirm-delete-modal";
 import { ConfirmStopModal } from "./confirm-stop-modal";
 import { LoadingSpinner } from "#/components/shared/loading-spinner";
@@ -36,6 +37,10 @@ export function ConversationPanel({ onClose }: ConversationPanelProps) {
     React.useState(false);
   const [confirmStopModalVisible, setConfirmStopModalVisible] =
     React.useState(false);
+  const [
+    confirmDeleteSandboxModalVisible,
+    setConfirmDeleteSandboxModalVisible,
+  ] = React.useState(false);
   const [
     confirmExitConversationModalVisible,
     setConfirmExitConversationModalVisible,
@@ -70,6 +75,7 @@ export function ConversationPanel({ onClose }: ConversationPanelProps) {
   const { mutate: deleteConversation } = useDeleteConversation();
   const { mutate: pauseConversationSandbox } =
     useUnifiedPauseConversationSandbox();
+  const { mutate: deleteConversationSandbox } = useDeleteConversationSandbox();
   const { mutate: updateConversation } = useUpdateConversation();
 
   // Set up infinite scroll
@@ -91,6 +97,15 @@ export function ConversationPanel({ onClose }: ConversationPanelProps) {
     sandboxId?: string | null,
   ) => {
     setConfirmStopModalVisible(true);
+    setSelectedConversationId(conversationId);
+    setSelectedSandboxId(sandboxId ?? null);
+  };
+
+  const handleDeleteSandbox = (
+    conversationId: string,
+    sandboxId?: string | null,
+  ) => {
+    setConfirmDeleteSandboxModalVisible(true);
     setSelectedConversationId(conversationId);
     setSelectedSandboxId(sandboxId ?? null);
   };
@@ -187,6 +202,9 @@ export function ConversationPanel({ onClose }: ConversationPanelProps) {
             onStop={() =>
               handleStopConversation(conversation.id, conversation.sandbox_id)
             }
+            onDeleteSandbox={() =>
+              handleDeleteSandbox(conversation.id, conversation.sandbox_id)
+            }
             onChangeTitle={(title) =>
               handleConversationTitleChange(conversation.id, title)
             }
@@ -243,6 +261,22 @@ export function ConversationPanel({ onClose }: ConversationPanelProps) {
             setConfirmStopModalVisible(false);
           }}
           onCancel={() => setConfirmStopModalVisible(false)}
+          sandboxId={selectedSandboxId}
+        />
+      )}
+
+      {confirmDeleteSandboxModalVisible && (
+        <ConfirmStopModal
+          action="delete"
+          onConfirm={() => {
+            if (selectedConversationId) {
+              deleteConversationSandbox({
+                conversationId: selectedConversationId,
+              });
+            }
+            setConfirmDeleteSandboxModalVisible(false);
+          }}
+          onCancel={() => setConfirmDeleteSandboxModalVisible(false)}
           sandboxId={selectedSandboxId}
         />
       )}

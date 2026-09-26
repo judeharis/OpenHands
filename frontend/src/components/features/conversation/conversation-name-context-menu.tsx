@@ -15,6 +15,7 @@ import ToolsIcon from "#/icons/u-tools.svg?react";
 import DownloadIcon from "#/icons/u-download.svg?react";
 import CreditCardIcon from "#/icons/u-credit-card.svg?react";
 import CloseIcon from "#/icons/u-close.svg?react";
+import ServerIcon from "#/icons/server.svg?react";
 import DeleteIcon from "#/icons/u-delete.svg?react";
 import LinkIcon from "#/icons/link-external.svg?react";
 import CopyIcon from "#/icons/copy.svg?react";
@@ -31,6 +32,7 @@ interface ConversationNameContextMenuProps {
   onRename?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onDelete?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onStop?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onDeleteSandbox?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onDisplayCost?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onShowAgentTools?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onShowSkills?: (event: React.MouseEvent<HTMLButtonElement>) => void;
@@ -47,6 +49,7 @@ export function ConversationNameContextMenu({
   onRename,
   onDelete,
   onStop,
+  onDeleteSandbox,
   onDisplayCost,
   onShowAgentTools,
   onShowSkills,
@@ -66,7 +69,7 @@ export function ConversationNameContextMenu({
   const shouldShowPublicSharing = config?.app_mode === "saas" && onTogglePublic;
   const hasTools = Boolean(onShowAgentTools || onShowSkills || onShowHooks);
   const hasInfo = Boolean(onDisplayCost);
-  const hasControl = Boolean(onStop || onDelete);
+  const hasControl = Boolean(onStop || onDeleteSandbox || onDelete);
 
   return (
     <ContextMenu
@@ -216,6 +219,20 @@ export function ConversationNameContextMenu({
           <ConversationNameContextMenuIconText
             icon={<CloseIcon width={16} height={16} />}
             text={t(I18nKey.COMMON$CLOSE_CONVERSATION_STOP_RUNTIME)}
+            className={CONTEXT_MENU_ICON_TEXT_CLASSNAME}
+          />
+        </ContextMenuListItem>
+      )}
+
+      {onDeleteSandbox && (
+        <ContextMenuListItem
+          testId="delete-sandbox-button"
+          onClick={onDeleteSandbox}
+          className={contextMenuListItemClassName}
+        >
+          <ConversationNameContextMenuIconText
+            icon={<ServerIcon width={16} height={16} />}
+            text={t(I18nKey.CONVERSATION$DELETE_SANDBOX)}
             className={CONTEXT_MENU_ICON_TEXT_CLASSNAME}
           />
         </ContextMenuListItem>

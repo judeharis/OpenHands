@@ -15,6 +15,7 @@ interface ConversationCardProps {
   onClick?: () => void;
   onDelete?: () => void;
   onStop?: () => void;
+  onDeleteSandbox?: () => void;
   onChangeTitle?: (title: string) => void;
   showOptions?: boolean;
   title: string;
@@ -32,6 +33,7 @@ export function ConversationCard({
   onClick,
   onDelete,
   onStop,
+  onDeleteSandbox,
   onChangeTitle,
   showOptions,
   title,
@@ -67,6 +69,13 @@ export function ConversationCard({
     event.preventDefault();
     event.stopPropagation();
     onStop?.();
+    onContextMenuToggle?.(false);
+  };
+
+  const handleDeleteSandbox = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onDeleteSandbox?.();
     onContextMenuToggle?.(false);
   };
 
@@ -143,6 +152,7 @@ export function ConversationCard({
             onContextMenuToggle={onContextMenuToggle || (() => {})}
             onDelete={onDelete && handleDelete}
             onStop={onStop && handleStop}
+            onDeleteSandbox={onDeleteSandbox && handleDeleteSandbox}
             onEdit={onChangeTitle && handleEdit}
             onDownloadViaVSCode={handleDownloadViaVSCode}
             onDownloadConversation={handleDownloadConversation}

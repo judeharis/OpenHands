@@ -37,7 +37,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export const meta: MetaFunction = () => [
-  { title: "Jentic" },
+  { title: "jentic" },
   { name: "description", content: "Your agent, on your machine." },
 ];
 

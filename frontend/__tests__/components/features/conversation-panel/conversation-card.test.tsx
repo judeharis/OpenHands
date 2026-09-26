@@ -484,7 +484,7 @@ describe("ConversationCard", () => {
     ["RUNNING", true],
     ["STARTING", true],
     ["ERROR", false],
-    ["PAUSED", false],
+    ["PAUSED", true], // turning off frees the memory a paused container holds
     ["MISSING", false],
   ];
 
@@ -493,7 +493,7 @@ describe("ConversationCard", () => {
     (sandboxStatus, shouldShow) => {
       renderWithProviders(
         <ConversationCardActions
-          contextMenuOpen={true}
+          contextMenuOpen
           onContextMenuToggle={vi.fn()}
           onStop={vi.fn()}
           sandboxStatus={sandboxStatus}
@@ -509,4 +509,57 @@ describe("ConversationCard", () => {
       }
     },
   );
+
+  const deleteSandboxTable: [V1SandboxStatus, boolean][] = [
+    ["RUNNING", true],
+    ["STARTING", true],
+    ["ERROR", true],
+    ["PAUSED", true],
+    ["MISSING", false], // no sandbox left to delete
+  ];
+
+  it.each(deleteSandboxTable)(
+    "shows Delete Sandbox for sandbox status %s: %s",
+    (sandboxStatus, shouldShow) => {
+      renderWithProviders(
+        <ConversationCardActions
+          contextMenuOpen
+          onContextMenuToggle={vi.fn()}
+          onDeleteSandbox={vi.fn()}
+          sandboxStatus={sandboxStatus}
+        />,
+      );
+
+      const button = screen.queryByTestId("delete-sandbox-button");
+
+      if (shouldShow) {
+        expect(button).toBeInTheDocument();
+      } else {
+        expect(button).not.toBeInTheDocument();
+      }
+    },
+  );
+
+  it("calls onDeleteSandbox, not onDelete, from Delete Sandbox", async () => {
+    const user = userEvent.setup();
+    const onDeleteConversation = vi.fn();
+    const onDeleteSandbox = vi.fn();
+    renderWithProviders(
+      <ConversationCard
+        onDelete={onDeleteConversation}
+        onDeleteSandbox={onDeleteSandbox}
+        title="Conversation 1"
+        selectedRepository={null}
+        lastUpdatedAt="2021-10-01T12:00:00Z"
+        sandboxStatus="RUNNING"
+        contextMenuOpen
+        onContextMenuToggle={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByTestId("delete-sandbox-button"));
+
+    expect(onDeleteSandbox).toHaveBeenCalledOnce();
+    expect(onDeleteConversation).not.toHaveBeenCalled();
+  });
 });

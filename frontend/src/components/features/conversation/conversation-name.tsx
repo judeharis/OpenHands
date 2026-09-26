@@ -36,6 +36,7 @@ export function ConversationName() {
   const {
     handleDelete,
     handleStop,
+    handleDeleteSandbox,
     handleDownloadConversation,
     handleDisplayCost,
     handleShowAgentTools,
@@ -46,6 +47,7 @@ export function ConversationName() {
     shareUrl,
     handleConfirmDelete,
     handleConfirmStop,
+    handleConfirmDeleteSandbox,
     metricsModalVisible,
     setMetricsModalVisible,
     systemModalVisible,
@@ -58,8 +60,11 @@ export function ConversationName() {
     setConfirmDeleteModalVisible,
     confirmStopModalVisible,
     setConfirmStopModalVisible,
+    confirmDeleteSandboxModalVisible,
+    setConfirmDeleteSandboxModalVisible,
     systemMessage,
     shouldShowStop,
+    shouldShowDeleteSandbox,
     shouldShowDownloadConversation,
     shouldShowDisplayCost,
     shouldShowAgentTools,
@@ -207,6 +212,9 @@ export function ConversationName() {
                 onRename={handleRename}
                 onDelete={handleDelete}
                 onStop={shouldShowStop ? handleStop : undefined}
+                onDeleteSandbox={
+                  shouldShowDeleteSandbox ? handleDeleteSandbox : undefined
+                }
                 onDisplayCost={
                   shouldShowDisplayCost ? handleDisplayCost : undefined
                 }
@@ -267,6 +275,16 @@ export function ConversationName() {
         <ConfirmStopModal
           onConfirm={handleConfirmStop}
           onCancel={() => setConfirmStopModalVisible(false)}
+          sandboxId={conversation?.sandbox_id ?? null}
+        />
+      )}
+
+      {/* Confirm Delete Sandbox Modal */}
+      {confirmDeleteSandboxModalVisible && (
+        <ConfirmStopModal
+          action="delete"
+          onConfirm={handleConfirmDeleteSandbox}
+          onCancel={() => setConfirmDeleteSandboxModalVisible(false)}
           sandboxId={conversation?.sandbox_id ?? null}
         />
       )}

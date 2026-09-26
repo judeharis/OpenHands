@@ -1,6 +1,6 @@
 {
-    "name": "Jentic",
-    "short_name": "Jentic",
+    "name": "jentic",
+    "short_name": "jentic",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",

@@ -4,55 +4,55 @@
  */
 
 /**
- * Process a regular file by reading its content into memory
- * For large files (1GB+), this will take significant time
+ * Fork: read an attachment into memory once, when it is picked, and use that copy from
+ * then on. On a phone the picked File is a live view of the camera's or gallery's copy:
+ * Chrome reads it again at send time, and if that source has moved on (a camera capture
+ * finishing its write, a gallery item re-synced) it aborts the upload mid-body. Seen
+ * 2026-09-26: four camera-recorded .mp4s from the phone, each preflight answered and no
+ * POST ever reaching the sandbox (nginx logged the one it saw as a 400 after 13 s of
+ * body), while the same upload from the desktop took 60 MB in 1.6 s. A copy in memory
+ * is read from nowhere else. The home composer holds attachments until the new
+ * conversation's sandbox is up, so it needs the copy even more.
  */
-export const processFile = async (file: File): Promise<void> =>
+export const snapshotFile = async (file: File): Promise<File> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
 
     reader.onload = () => {
-      // File has been fully read into memory
-      resolve();
+      resolve(
+        new File([reader.result as ArrayBuffer], file.name, {
+          type: file.type,
+          lastModified: file.lastModified,
+        }),
+      );
     };
 
     reader.onerror = () => {
-      reject(new Error(`Failed to read file: ${file.name}`));
+      reject(
+        new Error(
+          `Failed to read file: ${file.name}${reader.error ? ` (${reader.error.message})` : ""}`,
+        ),
+      );
     };
 
     reader.onabort = () => {
       reject(new Error(`File reading was aborted: ${file.name}`));
     };
 
-    // Read the file as ArrayBuffer - this takes time for large files
-    // For a 1GB file, this can take several seconds
     reader.readAsArrayBuffer(file);
   });
 
 /**
- * Process an image file by reading its content
- * This validates the image can be read and prepares it for display
+ * Process a regular file by reading its content into memory
  */
-export const processImage = async (image: File): Promise<void> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
+export const processFile = async (file: File): Promise<File> =>
+  snapshotFile(file);
 
-    reader.onload = () => {
-      // Image has been read and is ready for display
-      resolve();
-    };
-
-    reader.onerror = () => {
-      reject(new Error(`Failed to read image: ${image.name}`));
-    };
-
-    reader.onabort = () => {
-      reject(new Error(`Image reading was aborted: ${image.name}`));
-    };
-
-    // Read the image as data URL - this takes time for large images
-    reader.readAsDataURL(image);
-  });
+/**
+ * Process an image file by reading its content into memory
+ */
+export const processImage = async (image: File): Promise<File> =>
+  snapshotFile(image);
 
 /**
  * Process multiple files concurrently with individual error handling
@@ -61,10 +61,7 @@ export const processFiles = async (
   files: File[],
 ): Promise<{ successful: File[]; failed: { file: File; error: Error }[] }> => {
   const results = await Promise.allSettled(
-    files.map(async (file) => {
-      await processFile(file);
-      return file;
-    }),
+    files.map(async (file) => processFile(file)),
   );
 
   const successful: File[] = [];
@@ -88,10 +85,7 @@ export const processImages = async (
   images: File[],
 ): Promise<{ successful: File[]; failed: { file: File; error: Error }[] }> => {
   const results = await Promise.allSettled(
-    images.map(async (image) => {
-      await processImage(image);
-      return image;
-    }),
+    images.map(async (image) => processImage(image)),
   );
 
   const successful: File[] = [];

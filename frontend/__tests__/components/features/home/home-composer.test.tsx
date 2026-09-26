@@ -17,6 +17,15 @@ vi.mock("#/hooks/mutation/use-create-conversation", () => ({
 vi.mock("#/hooks/use-is-creating-conversation", () => ({
   useIsCreatingConversation: () => false,
 }));
+vi.mock("#/utils/wav-recorder", () => ({
+  startWavRecording: vi.fn(async () => ({
+    stop: async () => ({ wav: new Blob(["RIFF"]), seconds: 2 }),
+    cancel: () => {},
+  })),
+}));
+vi.mock("#/api/voice-service.api", () => ({
+  transcribeSpeech: vi.fn(async () => "and add tests"),
+}));
 vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: (k: string) => k }),
@@ -54,7 +63,9 @@ describe("starting a conversation from the home screen (jentic)", () => {
     await userEvent.click(screen.getByTestId("submit-button"));
 
     await waitFor(() => expect(createConversation).toHaveBeenCalled());
-    expect(createConversation.mock.calls[0][0]).toEqual({ agentType: "default" });
+    expect(createConversation.mock.calls[0][0]).toEqual({
+      agentType: "default",
+    });
     expect(usePendingFirstMessageStore.getState().pending).toMatchObject({
       taskId: "t2",
       text: "ship a feature",
@@ -73,7 +84,9 @@ describe("starting a conversation from the home screen (jentic)", () => {
     await userEvent.click(screen.getByTestId("launch-new-conversation-button"));
 
     await waitFor(() => expect(createConversation).toHaveBeenCalled());
-    expect(createConversation.mock.calls[0][0]).toEqual({ agentType: "default" });
+    expect(createConversation.mock.calls[0][0]).toEqual({
+      agentType: "default",
+    });
     expect(usePendingFirstMessageStore.getState().pending).toMatchObject({
       text: "",
       mode: "plan",
@@ -98,14 +111,30 @@ describe("starting a conversation from the home screen (jentic)", () => {
     );
   });
 
+  it("puts dictated text after what is typed", async () => {
+    render(<HomeComposer />);
+    const box = screen.getByTestId("home-composer");
+    await userEvent.type(box, "build a thing");
+    const mic = screen.getByTestId("mic-button");
+
+    await userEvent.click(mic);
+    await waitFor(() => expect(mic).toHaveAttribute("data-state", "recording"));
+    await userEvent.click(mic);
+
+    await waitFor(() => expect(box).toHaveValue("build a thing and add tests"));
+  });
+
   describe("attachments", () => {
     const image = () => new File(["png"], "mouse.png", { type: "image/png" });
     const file = () => new File(["a,b"], "data.csv", { type: "text/csv" });
     // user-event reads accept="*/*" as matching no type at all and drops every file.
-    const upload = (files: File | File[]) =>
-      userEvent
+    // Attachments show once they are read into memory (snapshotFile), a tick later.
+    const upload = async (files: File | File[]) => {
+      await userEvent
         .setup({ applyAccept: false })
         .upload(screen.getByTestId("upload-image-input"), files);
+      await screen.findByTestId("home-attachments");
+    };
 
     it("sends an attached image in the first message", async () => {
       render(<HomeComposer />);

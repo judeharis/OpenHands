@@ -13,7 +13,22 @@ interface ConfirmStopModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   sandboxId: string | null;
+  /** "delete": remove the sandbox container, keep the conversations (Reopen) */
+  action?: "stop" | "delete";
 }
+
+const ACTION_TEXT = {
+  stop: {
+    title: I18nKey.CONVERSATION$CONFIRM_CLOSE_CONVERSATION,
+    description: I18nKey.CONVERSATION$CLOSE_CONVERSATION_WARNING,
+    confirm: I18nKey.ACTION$CONFIRM_CLOSE,
+  },
+  delete: {
+    title: I18nKey.CONVERSATION$CONFIRM_DELETE_SANDBOX,
+    description: I18nKey.CONVERSATION$DELETE_SANDBOX_WARNING,
+    confirm: I18nKey.CONVERSATION$DELETE_SANDBOX,
+  },
+} as const;
 
 function ConversationsList({
   conversations,
@@ -65,8 +80,10 @@ export function ConfirmStopModal({
   onConfirm,
   onCancel,
   sandboxId,
+  action = "stop",
 }: ConfirmStopModalProps) {
   const { t } = useTranslation();
+  const text = ACTION_TEXT[action];
   const {
     data: conversations,
     isLoading,
@@ -77,12 +94,8 @@ export function ConfirmStopModal({
     <ModalBackdrop onClose={onCancel}>
       <ModalBody className="items-start border border-tertiary">
         <div className="flex flex-col gap-2">
-          <BaseModalTitle
-            title={t(I18nKey.CONVERSATION$CONFIRM_CLOSE_CONVERSATION)}
-          />
-          <BaseModalDescription
-            description={t(I18nKey.CONVERSATION$CLOSE_CONVERSATION_WARNING)}
-          />
+          <BaseModalTitle title={t(text.title)} />
+          <BaseModalDescription description={t(text.description)} />
           <ConversationsList
             conversations={conversations}
             isLoading={isLoading}
@@ -101,7 +114,7 @@ export function ConfirmStopModal({
             className="w-full"
             data-testid="confirm-button"
           >
-            {t(I18nKey.ACTION$CONFIRM_CLOSE)}
+            {t(text.confirm)}
           </BrandButton>
           <BrandButton
             type="button"

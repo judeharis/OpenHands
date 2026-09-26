@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router";
 import useMetricsStore from "#/stores/metrics-store";
 import { useDeleteConversation } from "./mutation/use-delete-conversation";
 import { useUnifiedPauseConversationSandbox } from "./mutation/use-unified-stop-conversation";
+import { useDeleteConversationSandbox } from "./mutation/use-delete-conversation-sandbox";
 import { useUpdateConversationPublicFlag } from "./mutation/use-update-conversation-public-flag";
 import { displaySuccessToast } from "#/utils/custom-toast-handlers";
 import { I18nKey } from "#/i18n/declaration";
@@ -36,6 +37,7 @@ export function useConversationNameContextMenu({
   const events = useEventStore((state) => state.events);
   const { mutate: deleteConversation } = useDeleteConversation();
   const { mutate: stopConversation } = useUnifiedPauseConversationSandbox();
+  const { mutate: deleteConversationSandbox } = useDeleteConversationSandbox();
   const { mutate: updatePublicFlag } = useUpdateConversationPublicFlag();
   const { data: conversation } = useActiveConversation();
   const metrics = useMetricsStore();
@@ -48,6 +50,10 @@ export function useConversationNameContextMenu({
     React.useState(false);
   const [confirmStopModalVisible, setConfirmStopModalVisible] =
     React.useState(false);
+  const [
+    confirmDeleteSandboxModalVisible,
+    setConfirmDeleteSandboxModalVisible,
+  ] = React.useState(false);
   const { mutateAsync: downloadConversation } = useDownloadConversation();
 
   const systemMessage: SystemMessageForModal | null =
@@ -64,6 +70,13 @@ export function useConversationNameContextMenu({
     event.preventDefault();
     event.stopPropagation();
     setConfirmStopModalVisible(true);
+    onContextMenuToggle?.(false);
+  };
+
+  const handleDeleteSandbox = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setConfirmDeleteSandboxModalVisible(true);
     onContextMenuToggle?.(false);
   };
 
@@ -88,6 +101,13 @@ export function useConversationNameContextMenu({
       stopConversation({ conversationId });
     }
     setConfirmStopModalVisible(false);
+  };
+
+  const handleConfirmDeleteSandbox = () => {
+    if (conversationId) {
+      deleteConversationSandbox({ conversationId });
+    }
+    setConfirmDeleteSandboxModalVisible(false);
   };
 
   const handleEdit = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -171,6 +191,7 @@ export function useConversationNameContextMenu({
     // Handlers
     handleDelete,
     handleStop,
+    handleDeleteSandbox,
     handleEdit,
     handleDownloadConversation,
     handleDisplayCost,
@@ -182,6 +203,7 @@ export function useConversationNameContextMenu({
     shareUrl,
     handleConfirmDelete,
     handleConfirmStop,
+    handleConfirmDeleteSandbox,
 
     // Modal states
     metricsModalVisible,
@@ -196,6 +218,8 @@ export function useConversationNameContextMenu({
     setConfirmDeleteModalVisible,
     confirmStopModalVisible,
     setConfirmStopModalVisible,
+    confirmDeleteSandboxModalVisible,
+    setConfirmDeleteSandboxModalVisible,
 
     // Data
     metrics,
@@ -203,6 +227,7 @@ export function useConversationNameContextMenu({
 
     // Computed values for conditional rendering
     shouldShowStop: sandboxStatus !== "MISSING",
+    shouldShowDeleteSandbox: sandboxStatus !== "MISSING",
     shouldShowDownloadConversation: Boolean(conversationId && showOptions),
     shouldShowDisplayCost: showOptions,
     shouldShowAgentTools: Boolean(showOptions && systemMessage),

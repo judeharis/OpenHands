@@ -12,6 +12,7 @@ import ToolsIcon from "#/icons/u-tools.svg?react";
 import DownloadIcon from "#/icons/u-download.svg?react";
 import CreditCardIcon from "#/icons/u-credit-card.svg?react";
 import CloseIcon from "#/icons/u-close.svg?react";
+import ServerIcon from "#/icons/server.svg?react";
 import DeleteIcon from "#/icons/u-delete.svg?react";
 import { Divider } from "#/ui/divider";
 
@@ -19,6 +20,7 @@ interface ConversationCardContextMenuProps {
   onClose: () => void;
   onDelete?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onStop?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onDeleteSandbox?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onEdit?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onDisplayCost?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onShowAgentTools?: (event: React.MouseEvent<HTMLButtonElement>) => void;
@@ -35,6 +37,7 @@ export function ConversationCardContextMenu({
   onClose,
   onDelete,
   onStop,
+  onDeleteSandbox,
   onEdit,
   onDisplayCost,
   onShowAgentTools,
@@ -134,6 +137,19 @@ export function ConversationCardContextMenu({
               <ConversationNameContextMenuIconText
                 icon={<CloseIcon width={16} height={16} />}
                 text={t(I18nKey.COMMON$CLOSE_CONVERSATION_STOP_RUNTIME)}
+              />
+            </ContextMenuListItem>
+          ),
+          onDeleteSandbox && (
+            <ContextMenuListItem
+              key="delete-sandbox-button"
+              testId="delete-sandbox-button"
+              onClick={onDeleteSandbox}
+              className={contextMenuListItemClassName}
+            >
+              <ConversationNameContextMenuIconText
+                icon={<ServerIcon width={16} height={16} />}
+                text={t(I18nKey.CONVERSATION$DELETE_SANDBOX)}
               />
             </ContextMenuListItem>
           ),

@@ -61,6 +61,8 @@ export const useFileHandling = (
   const handleFileInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
+      // Cleared so picking the same file again (after a failed send) fires change
+      if (fileInputRef.current) fileInputRef.current.value = "";
       addFiles(files);
     },
     [addFiles],

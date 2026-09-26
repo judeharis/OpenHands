@@ -30,6 +30,20 @@ export class SandboxService {
   }
 
   /**
+   * Delete a V1 sandbox: its container is removed, the conversations in it go
+   * MISSING and keep their history on the workspace mount (Reopen restores them).
+   * The app declares the route as /{id} but names the handler argument
+   * sandbox_id, so FastAPI takes the id from the query string (upstream 1.36).
+   */
+  static async deleteSandbox(sandboxId: string): Promise<{ success: boolean }> {
+    const { data } = await openHands.delete<{ success: boolean }>(
+      `/api/v1/sandboxes/${sandboxId}`,
+      { params: { sandbox_id: sandboxId } },
+    );
+    return data;
+  }
+
+  /**
    * Search / list available sandbox specs
    * Calls the /api/v1/sandbox-specs/search endpoint
    */

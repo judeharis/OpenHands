@@ -39,6 +39,14 @@ export const pauseV1ConversationSandbox = async (conversationId: string) => {
 };
 
 /**
+ * Delete a V1 conversation's sandbox; the conversation itself is kept
+ */
+export const deleteV1ConversationSandbox = async (conversationId: string) => {
+  const { sandboxId } = await fetchV1ConversationData(conversationId);
+  return SandboxService.deleteSandbox(sandboxId);
+};
+
+/**
  * Interrupt a V1 conversation by fetching the conversation data and interrupting it
  */
 export const interruptV1Conversation = async (conversationId: string) => {

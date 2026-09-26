@@ -178,7 +178,11 @@ export function ChatInterface() {
         ? await uploadFiles({ conversationId: params.conversationId!, files })
         : { skipped_files: [], uploaded_files: [] };
 
-    skippedFiles.forEach((f) => displayErrorToast(f.reason));
+    // Name the file: a bare "Network Error" read as if the message itself had failed,
+    // when it went out without the attachment
+    skippedFiles.forEach((f) =>
+      displayErrorToast(`${f.name} was not attached: ${f.reason}`),
+    );
 
     const filePrompt = `${t("CHAT_INTERFACE$AUGMENTED_PROMPT_FILES_TITLE")}: ${uploadedFiles.join("\n\n")}`;
     const prompt =

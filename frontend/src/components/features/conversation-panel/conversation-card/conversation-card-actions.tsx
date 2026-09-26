@@ -9,6 +9,7 @@ interface ConversationCardActionsProps {
   onContextMenuToggle: (isOpen: boolean) => void;
   onDelete?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onStop?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onDeleteSandbox?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onEdit?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onDownloadViaVSCode?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onDownloadConversation?: (event: React.MouseEvent<HTMLButtonElement>) => void;
@@ -22,6 +23,7 @@ export function ConversationCardActions({
   onContextMenuToggle,
   onDelete,
   onStop,
+  onDeleteSandbox,
   onEdit,
   onDownloadViaVSCode,
   onDownloadConversation,
@@ -59,9 +61,18 @@ export function ConversationCardActions({
         <ConversationCardContextMenu
           onClose={() => onContextMenuToggle(false)}
           onDelete={onDelete}
+          // PAUSED too: an upstream-paused container still holds its memory,
+          // and turning off an already stopped one is a no-op
           onStop={
-            sandboxStatus === "RUNNING" || sandboxStatus === "STARTING"
+            sandboxStatus === "RUNNING" ||
+            sandboxStatus === "STARTING" ||
+            sandboxStatus === "PAUSED"
               ? onStop
+              : undefined
+          }
+          onDeleteSandbox={
+            sandboxStatus && sandboxStatus !== "MISSING"
+              ? onDeleteSandbox
               : undefined
           }
           onEdit={onEdit}
