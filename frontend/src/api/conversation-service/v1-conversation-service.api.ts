@@ -340,6 +340,28 @@ class V1ConversationService {
   }
 
   /**
+   * Fork: download one file from the conversation's sandbox, as a Blob.
+   * V1 API endpoint: GET /api/file/download?path={path} (absolute path)
+   */
+  static async downloadFile(
+    conversationUrl: string | null | undefined,
+    sessionApiKey: string | null | undefined,
+    path: string,
+  ): Promise<Blob> {
+    const params = new URLSearchParams();
+    params.append("path", path);
+    const url = this.buildRuntimeUrl(
+      conversationUrl,
+      `/api/file/download?${params.toString()}`,
+    );
+    const { data } = await axios.get<Blob>(url, {
+      headers: buildSessionHeaders(sessionApiKey),
+      responseType: "blob",
+    });
+    return data;
+  }
+
+  /**
    * Upload a single file to the V1 conversation workspace
    * V1 API endpoint: POST /api/file/upload?path={path}
    *

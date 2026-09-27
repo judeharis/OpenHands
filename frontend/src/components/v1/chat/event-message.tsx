@@ -19,6 +19,7 @@ import { useAgentState } from "#/hooks/use-agent-state";
 import { AgentState } from "#/types/agent-state";
 import { ChatMessage } from "../../features/chat/chat-message";
 import { GenericEventMessage } from "../../features/chat/generic-event-message";
+import { MediaOutputPreview } from "./event-message-components/media-output-preview";
 import { PlanPreview } from "../../features/chat/plan-preview";
 import {
   ErrorEventMessage,
@@ -289,6 +290,7 @@ export function EventMessage({
               : undefined
           }
         />
+        <MediaOutputPreview event={event} action={correspondingAction} />
       </>
     );
   }
