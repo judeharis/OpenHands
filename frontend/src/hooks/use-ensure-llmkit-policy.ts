@@ -66,6 +66,7 @@ export function useEnsureLlmkitPolicy(
           setPolicy(t.id, {
             kind: analyzer.kind,
             grants: analyzer.grants ?? [],
+            auto: !!analyzer.auto,
           });
         } catch (error) {
           done.current.delete(k);

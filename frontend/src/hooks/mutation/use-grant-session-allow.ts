@@ -56,9 +56,12 @@ export const useGrantSessionAllow = () =>
       return merged;
     },
     onSuccess: (merged, variables) => {
+      const prev =
+        usePolicyStore.getState().byConversation[variables.conversationId];
       usePolicyStore.getState().setPolicy(variables.conversationId, {
         kind: LLMKIT_ANALYZER_KIND,
         grants: merged,
+        auto: prev?.auto,
       });
     },
   });

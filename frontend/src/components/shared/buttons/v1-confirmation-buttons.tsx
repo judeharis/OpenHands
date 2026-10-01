@@ -106,8 +106,11 @@ export function V1ConfirmationButtons() {
   const grants = usePolicyStore((state) =>
     target ? state.byConversation[target.id]?.grants : undefined,
   );
+  const autoMode = usePolicyStore((state) =>
+    target ? !!state.byConversation[target.id]?.auto : false,
+  );
   const decisions = useMemo(() => {
-    const cfg = defaultPolicyConfig({ grants: grants ?? [] });
+    const cfg = defaultPolicyConfig({ grants: grants ?? [], auto: autoMode });
     return pending.map((ev) => ({
       event: ev,
       decision: classify(
@@ -122,7 +125,7 @@ export function V1ConfirmationButtons() {
         ? (ev.action as { command?: string }).command
         : undefined,
     }));
-  }, [pending, grants]);
+  }, [pending, grants, autoMode]);
 
   const anyDeny = decisions.some((d) => d.decision.verdict === "deny");
   const anyHigh = pending.some((ev) => ev.security_risk === SecurityRisk.HIGH);
@@ -344,6 +347,29 @@ export function V1ConfirmationButtons() {
             </li>
           )}
         </ul>
+        {autoMode && (
+          <p
+            className="text-xs text-amber-400"
+            data-testid="v1-auto-still-asks"
+          >
+            {decisions.some((d) => d.decision.verdict === "ask")
+              ? t(I18nKey.POLICY$AUTO_STILL_ASKS, {
+                  why: Array.from(
+                    new Set(
+                      decisions
+                        .filter((d) => d.decision.verdict === "ask")
+                        .map((d) =>
+                          d.decision.reason.replace(
+                            /^auto mode still asks: /,
+                            "",
+                          ),
+                        ),
+                    ),
+                  ).join("; "),
+                })
+              : t(I18nKey.POLICY$AUTO_HELD)}
+          </p>
+        )}
         <p className="text-sm font-normal text-white">
           {pending.length > 1
             ? t(I18nKey.CHAT_INTERFACE$PENDING_ACTIONS, {

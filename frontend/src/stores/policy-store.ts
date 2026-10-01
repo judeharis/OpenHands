@@ -8,6 +8,8 @@ import { create } from "zustand";
 export interface PolicyEntry {
   kind: string | null;
   grants: string[];
+  /** auto mode: only what reaches past the sandbox asks */
+  auto?: boolean;
 }
 
 interface PolicyStore {

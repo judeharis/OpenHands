@@ -11,6 +11,8 @@ export interface ConfirmationResponseResponse {
 export interface V1SecurityAnalyzer {
   kind: string;
   grants?: string[];
+  /** LlmkitAnalyzer's auto mode */
+  auto?: boolean;
   [key: string]: unknown;
 }
 

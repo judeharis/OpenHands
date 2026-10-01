@@ -6,6 +6,7 @@ import { useConversationId } from "#/hooks/use-conversation-id";
 import { useV1PauseConversation } from "#/hooks/mutation/use-v1-pause-conversation";
 import { useV1ResumeConversation } from "#/hooks/mutation/use-v1-resume-conversation";
 import { ChangeAgentButton } from "../change-agent-button";
+import { AutoModeButton } from "../auto-mode-button";
 import { SwitchAcpModelButton } from "../switch-acp-model-button";
 import { SwitchProfileButton } from "../switch-profile-button";
 
@@ -46,6 +47,7 @@ export function ChatInputActions({ disabled }: ChatInputActionsProps) {
         <div className="flex items-center gap-3 md:gap-4 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Tools />
           <ChangeAgentButton />
+          <AutoModeButton />
           <SwitchProfileButton />
           <SwitchAcpModelButton />
         </div>

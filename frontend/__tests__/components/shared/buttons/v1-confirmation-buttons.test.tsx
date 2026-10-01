@@ -166,6 +166,44 @@ describe("V1ConfirmationButtons", () => {
     );
   });
 
+  it("in auto mode, says why a push still asks", () => {
+    usePolicyStore.setState({
+      byConversation: {
+        "conv-1": { kind: "LlmkitAnalyzer", grants: [], auto: true },
+      },
+    });
+    useEventStore.setState({
+      events: [
+        action(
+          "p1",
+          { kind: "TerminalAction", command: "git push origin main" },
+          "terminal",
+        ),
+      ],
+    } as never);
+    render(wrap(<V1ConfirmationButtons />));
+    const note = screen.getByTestId("v1-auto-still-asks").textContent;
+    expect(note).toContain("POLICY$AUTO_STILL_ASKS");
+    expect(note).toContain("git push");
+  });
+
+  it("in auto mode, something the rules would run is held by the sandbox's budget", () => {
+    usePolicyStore.setState({
+      byConversation: {
+        "conv-1": { kind: "LlmkitAnalyzer", grants: [], auto: true },
+      },
+    });
+    render(wrap(<V1ConfirmationButtons />));
+    expect(screen.getByTestId("v1-auto-still-asks").textContent).toBe(
+      "POLICY$AUTO_HELD",
+    );
+  });
+
+  it("without auto mode there is no auto note", () => {
+    render(wrap(<V1ConfirmationButtons />));
+    expect(screen.queryByTestId("v1-auto-still-asks")).toBeNull();
+  });
+
   it("a rejection can carry a reason the agent reads", () => {
     render(wrap(<V1ConfirmationButtons />));
     fireEvent.click(screen.getByTestId("action-reject-reason-button"));

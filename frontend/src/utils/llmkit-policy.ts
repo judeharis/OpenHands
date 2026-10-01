@@ -7,6 +7,10 @@
  *
  * Verdicts: "auto" runs without a tap, "ask" waits for one, "deny" reaches outside
  * the workspace (the guard hook refuses it; show it red).
+ *
+ * Auto mode (cfg.auto) turns most "ask" into "auto"; only what reaches past the
+ * sandbox still asks (see autoMode below). Its network budget and the browser's
+ * current page are the analyzer's state and are not modelled here.
  */
 
 export type Verdict = "auto" | "ask" | "deny";
@@ -15,6 +19,8 @@ export interface Decision {
   verdict: Verdict;
   reason: string;
   suggestedGrants: string[];
+  /** auto mode: "fetch" (counted by the sandbox's budget) or "page" */
+  net?: string;
 }
 
 export interface PolicyConfig {
@@ -25,6 +31,7 @@ export interface PolicyConfig {
   grants: string[];
   workspace: string;
   projectDir: string;
+  auto: boolean;
 }
 
 export const DEFAULT_WORKSPACE = "/workspace";
@@ -167,6 +174,7 @@ export function defaultPolicyConfig(
     grants: [],
     workspace: DEFAULT_WORKSPACE,
     projectDir: DEFAULT_PROJECT_DIR,
+    auto: false,
     ...overrides,
   };
 }
@@ -493,10 +501,7 @@ export function suggestGrants(
   return out;
 }
 
-export function classify(
-  action: ActionLike,
-  cfg: PolicyConfig = defaultPolicyConfig(),
-): Decision {
+function classifyStrict(action: ActionLike, cfg: PolicyConfig): Decision {
   const tool = String(action.tool_name || "");
   const a = action.action || {};
   const kind = String(a.kind || "");
@@ -591,4 +596,324 @@ export function classify(
     reason: `${tool || kind} is not read-only`,
     suggestedGrants: suggestGrants(action, cfg),
   };
+}
+
+// ---------------------------------------------------------------- auto mode
+// A port of llmkit_policy.core's auto mode; tests/vectors.json holds both to it.
+
+// "Local" is this sandbox and the desktop it runs on (the docker bridge). The LAN
+// and the tailnet are other people's machines: off the box.
+const LOCAL_HOST =
+  /^(localhost|127(\.\d+){3}|0\.0\.0\.0|\[?::1\]?|host\.docker\.internal|172\.(1[6-9]|2\d|3[01])(\.\d+){2})$/i;
+const SCHEME_URL = /[a-z][a-z0-9+.-]*:\/\/[^\s'"<>|;&)]+/gi;
+const BARE_HOST =
+  /^(?:([\w.+-]+@)?(localhost|(\d+\.){3}\d+|[\w-]+(\.[\w-]+)*\.[a-z]{2,})(:\d+)?([/:]\S*)?)$/i;
+const FILEISH =
+  /\.(js|jsx|ts|tsx|mjs|cjs|py|json|md|txt|html|css|scss|sh|yml|yaml|toml|lock|log|cfg|ini|conf|xml|csv|png|jpe?g|gif|svg|webp|wav|mp3|mp4|pdf|zip|gz|tgz|tar|whl|so|c|h|cpp|rs|go|java|rb|php|vue|svelte|env|map|pyc|server|tmpl|example|sample|bak|old|orig)$/i;
+// a command word starts the command or follows a separator
+const B = "(?:^|(?<=[\\s;&|(`'\"]))";
+const GIT_OPTS = "(?:-[Cc]\\s+\\S+\\s+|--?[\\w-]+(?:=\\S+)?\\s+)*";
+
+const SEND: Array<[string, string]> = [
+  [`${B}git\\s+${GIT_OPTS}(push|send-email|request-pull)\\b`, "git push"],
+  [
+    `${B}(npm|pnpm|yarn|bun)\\s+(publish|unpublish|deprecate|adduser|login|owner|dist-tag|access|team|token|hook)\\b`,
+    "publishes a package",
+  ],
+  [
+    `${B}(twine\\s+upload|cargo\\s+(publish|yank|owner|login)|poetry\\s+publish|uv\\s+publish|flit\\s+publish|hatch\\s+publish|gem\\s+(push|yank)|python3?\\s+setup\\.py\\s+\\S*\\s*(upload|register)|dotnet\\s+nuget\\s+push|mvn\\s+\\S*\\s*deploy|\\S*gradlew?\\s+\\S*publish)\\b`,
+    "publishes a package",
+  ],
+  [
+    `${B}gh\\s+(\\S+\\s+)?(create|edit|merge|close|reopen|comment|delete|upload|review|ready|fork|sync|archive|rename|transfer|set|add|remove|lock|unlock|cancel|rerun|run|enable|disable|login)\\b`,
+    "writes to GitHub",
+  ],
+  [
+    `${B}gh\\s+api\\b.*\\s(-X|--method|-f|-F|--field|--raw-field|--input)\\b`,
+    "writes to GitHub",
+  ],
+  [
+    `${B}(ssh|sshpass|scp|sftp|ftp|lftp|telnet|nc|ncat|netcat|socat|sendmail|mail|mailx|mutt|swaks)(\\s|$)`,
+    "talks to another machine",
+  ],
+  [
+    `${B}rsync\\b[^;&|\\n]*(\\s[\\w.@-]+:|::|rsync://)`,
+    "copies to another machine",
+  ],
+  [
+    `${B}(docker|podman)\\s+(push|login)\\b|${B}skopeo\\s+copy\\b`,
+    "pushes an image",
+  ],
+  [
+    `${B}(aws\\s+s3\\s+(cp|mv|sync|rm|rb|mb)|aws\\s+\\S+\\s+(put|create|delete|update|upload|send|publish)[\\w-]*|gsutil\\s+(cp|mv|rsync|rm)|gcloud\\s+.*\\b(deploy|create|delete|update)|az\\s+\\S+\\s+.*\\b(create|delete|upload|deploy)|rclone\\s+(copy|sync|move|delete|purge|copyto|moveto)` +
+      `|vercel|netlify\\s+deploy|firebase\\s+deploy|flyctl|fly\\s+deploy|wrangler\\s+(publish|deploy)|surge|heroku|kubectl\\s+(apply|create|delete|patch|replace)|terraform\\s+(apply|destroy)|pulumi\\s+up|ansible(-playbook)?` +
+      `|huggingface-cli\\s+upload|hf\\s+upload)(\\s|$)`,
+    "deploys or uploads",
+  ],
+];
+// Sending only counts when it goes off the box: a POST to the dev server is testing.
+const SEND_IF_REMOTE: Array<[string, string]> = [
+  [
+    `${B}curl\\b[^;&|\\n]*\\s(-d|--data[\\w-]*|-F|--form[\\w-]*|-T|--upload-file|--json|-X\\s*(POST|PUT|PATCH|DELETE)|--request\\s+(POST|PUT|PATCH|DELETE))(\\s|=|$)`,
+    "curl sends data",
+  ],
+  [
+    `${B}wget\\b[^;&|\\n]*\\s--(post-data|post-file|body-data|body-file|method)\\b`,
+    "wget sends data",
+  ],
+  [`${B}(http|https|xh|xhs)\\s+(POST|PUT|PATCH|DELETE)\\b`, "sends data"],
+  [
+    `\\b(requests|httpx|aiohttp|session)\\.(post|put|patch|delete)\\(|urlopen\\([^)]*data=|method=['"](POST|PUT|PATCH|DELETE)`,
+    "sends data",
+  ],
+];
+// Downloads from off the box: allowed, and counted against the sandbox's budget.
+const FETCH: string[] = [
+  `${B}(aria2c|yt-dlp|youtube-dl)\\b`,
+  `${B}git\\s+${GIT_OPTS}(clone|fetch|pull|ls-remote|submodule\\s+update|lfs\\s+(pull|fetch))\\b`,
+  `${B}(pip3?|python3?\\s+-m\\s+pip)\\s+(install|download)\\b`,
+  `${B}uv\\s+(pip\\s+install|add|sync|lock|tool\\s+install|run\\s+.*--with)\\b|${B}(uvx|pipx)(\\s|$)`,
+  `${B}(npm|pnpm|yarn)\\s+(view|info|show|outdated|search|audit)(\\s|$)|${B}pip3?\\s+index\\b`,
+  `${B}(npm|pnpm)\\s+(install|i|ci|add|update|upgrade|up|exec|create|dlx)(\\s|$)|${B}(npx|bunx|pnpx)\\s`,
+  `${B}yarn(\\s*$|\\s*[;&|]|\\s+(install|add|dlx|upgrade|up)\\b)`,
+  `${B}bun\\s+(install|i|add|x|create)(\\s|$)`,
+  `${B}(cargo\\s+(install|fetch|update|add)|go\\s+(get|install|mod\\s+download)|gem\\s+install|composer\\s+(install|require|update)|poetry\\s+(install|add|update|lock)|(conda|mamba|micromamba)\\s+(install|create|update)|apt(-get)?\\s+(install|update|upgrade)|apk\\s+add|playwright\\s+install|(huggingface-cli|hf)\\s+download|(docker|podman)\\s+pull)\\b`,
+];
+// Many requests at once, or a request that never stops.
+const FLOOD: Array<[string, string]> = [
+  [
+    `${B}wget\\b[^;&|\\n]*\\s(-r|--recursive|-m|--mirror|-l\\s*\\d+|--level)\\b`,
+    "mirrors a site",
+  ],
+  [`${B}curl\\b[^;&|\\n]*\\s(-Z|--parallel)\\b`, "parallel downloads"],
+  [
+    `${B}(httrack|nmap|masscan|zmap|hping3?|nikto|sqlmap|gobuster|ffuf|dirb|wfuzz|dirsearch)(\\s|$)`,
+    "scans hosts",
+  ],
+];
+const LOAD_TOOLS = new RegExp(
+  `${B}(ab|wrk|hey|siege|vegeta|locust|k6|artillery|autocannon|bombardier)\\s`,
+  "m",
+);
+const LOOP = new RegExp(`${B}(for|while|until|xargs|parallel|watch|seq)\\b`);
+const PING_FOREVER = new RegExp(`${B}ping\\b(?![^;&|\\n]*\\s-c\\s*\\d)`);
+const CURL_OR_WGET = new RegExp(`${B}(curl|wget)\\b`, "m");
+// Local damage that cannot be undone from inside the sandbox.
+const IRREVERSIBLE: Array<[string, string]> = [
+  [
+    `${B}git\\s+(reset\\s+(\\S+\\s+)*--hard|clean\\s+(\\S+\\s+)*-\\w*f|checkout\\s+(--\\s+)?\\.(\\s|$)|restore\\s+(--\\S+\\s+)*\\.(\\s|$)|stash\\s+(drop|clear)|branch\\s+-D|reflog\\s+expire|filter-branch|filter-repo|update-ref\\s+-d)`,
+    "discards git history or work",
+  ],
+];
+const BROWSER_PAGE_TOOLS = new Set([
+  "browser_click",
+  "browser_type",
+  "browser_set_storage",
+  "browser_scroll",
+]);
+const SEND_TOOL =
+  /(^|_)(send|post|push|publish|upload|create|update|delete|comment|merge|reply|share|tweet|email|deploy)(_|$)/i;
+const FETCH_TOOL =
+  /(^searxng_|url_read|(^|_)fetch(_|$)|web_search|(^|_)download(_|$))/i;
+
+const searchIM = (rx: string, text: string) => new RegExp(rx, "im").test(text);
+
+function hostOf(url: string): string {
+  let u = url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
+  if (u.split("/")[0].includes("@")) u = u.slice(u.lastIndexOf("@") + 1);
+  [u] = u.split("/");
+  if (u.startsWith("[")) return `${u.split("]")[0]}]`;
+  return u.split(":")[0];
+}
+
+/** Every host a command names (see hosts_in in core.py). */
+export function hostsIn(text: string): string[] {
+  const t = text || "";
+  const out = Array.from(t.matchAll(SCHEME_URL), (m) => hostOf(m[0]));
+  let toks: string[];
+  try {
+    toks = shlexSplit(t);
+  } catch {
+    toks = t.split(/\s+/).filter(Boolean);
+  }
+  toks.forEach((raw) => {
+    let tok = raw;
+    if (tok.startsWith("-") && tok.includes("="))
+      tok = tok.slice(tok.indexOf("=") + 1);
+    if (tok.includes("://") || !BARE_HOST.test(tok)) return;
+    const h = hostOf(tok);
+    if (!FILEISH.test(h)) out.push(h);
+  });
+  return out;
+}
+
+export const isLocalHost = (host: string) => LOCAL_HOST.test(host || "");
+export const offBox = (text: string) =>
+  hostsIn(text).some((h) => !isLocalHost(h));
+
+/** [effect, what]: effect is "send", "flood", "fetch" or "". */
+export function networkEffect(command: string): [string, string] {
+  const cmd = command || "";
+  const send = SEND.find(([rx]) => searchIM(rx, cmd));
+  if (send) return ["send", send[1]];
+  const remote = SEND_IF_REMOTE.find(([rx]) => searchIM(rx, cmd));
+  if (remote && (offBox(cmd) || hostsIn(cmd).length === 0))
+    return ["send", remote[1]];
+  const flood = FLOOD.find(([rx]) => searchIM(rx, cmd));
+  if (flood) return ["flood", flood[1]];
+  if (LOAD_TOOLS.test(cmd) && offBox(cmd))
+    return ["flood", "load-tests a remote host"];
+  if (PING_FOREVER.test(cmd) && offBox(cmd))
+    return ["flood", "pings without a count"];
+  let fetch = FETCH.some((rx) => searchIM(rx, cmd));
+  if (!fetch && CURL_OR_WGET.test(cmd))
+    fetch = offBox(cmd) || hostsIn(cmd).length === 0;
+  if (fetch && LOOP.test(cmd)) return ["flood", "fetches in a loop"];
+  return fetch ? ["fetch", "downloads"] : ["", ""];
+}
+
+function splitArgv(seg: string): string[] {
+  try {
+    return shlexSplit(seg);
+  } catch {
+    return seg.split(/\s+/).filter(Boolean);
+  }
+}
+
+/** What irreversible local damage a command does, or "". */
+export function irreversible(
+  command: string,
+  projectDir = DEFAULT_PROJECT_DIR,
+): string {
+  const cmd = command || "";
+  const hit = IRREVERSIBLE.find(([rx]) => searchIM(rx, cmd));
+  if (hit) return hit[1];
+  const segments = cmd.trim().split(SPLIT);
+  for (let s = 0; s < segments.length; s += 1) {
+    const argv = splitArgv(segments[s]);
+    // eslint-disable-next-line no-continue
+    if (argv.length === 0 || argv[0] !== "rm") continue;
+    const flags = argv
+      .slice(1)
+      .filter((t) => t.startsWith("-") && !t.startsWith("--"))
+      .map((t) => t.slice(1))
+      .join("");
+    const recursive =
+      flags.toLowerCase().includes("r") || argv.includes("--recursive");
+    // eslint-disable-next-line no-continue
+    if (!recursive) continue;
+    const targets = argv.slice(1).filter((t) => !t.startsWith("-"));
+    for (let i = 0; i < targets.length; i += 1) {
+      const t = targets[i];
+      if (["*", ".*", "./*", "~", "/"].includes(t) || t.startsWith("~"))
+        return "deletes the whole project";
+      const target = resolvePath(
+        t.replace(/\*+$/, "").replace(/\/+$/, "") || ".",
+        projectDir,
+      );
+      const base = target.split("/").pop();
+      if (base === ".git") return "deletes git history";
+      if (pathUnder(projectDir, target)) return "deletes the whole project";
+    }
+  }
+  return "";
+}
+
+function absPaths(cmd: string): string[] {
+  return Array.from(
+    (cmd || "").matchAll(/(?:^|(?<=[\s=<>'"(]))(~?\/[^\s'"<>|;&)]*)/g),
+    (m) => m[1],
+  );
+}
+
+function autoMode(
+  action: ActionLike,
+  cfg: PolicyConfig,
+  d: Decision,
+): Decision {
+  const tool = String(action.tool_name || "");
+  const a = action.action || {};
+  const kind = String(a.kind || "");
+  const terminal = isTerminal(tool, kind);
+  const cmd = terminal ? String(a.command || "") : "";
+
+  let net = "";
+  if (terminal) {
+    const [effect, what] = networkEffect(cmd);
+    if ((effect === "send" || effect === "flood") && d.verdict !== "deny")
+      return {
+        verdict: "ask",
+        reason: `auto mode still asks: ${what}`,
+        suggestedGrants: d.verdict === "ask" ? d.suggestedGrants : [],
+      };
+    net = effect === "fetch" ? "fetch" : "";
+  } else if (tool === "browser_navigate") {
+    net = offBox(String((a as { url?: string }).url || "")) ? "fetch" : "";
+  } else if (BROWSER_PAGE_TOOLS.has(tool)) {
+    net = "page";
+  } else if (FETCH_TOOL.test(tool)) {
+    net = "fetch";
+  }
+
+  if (d.verdict !== "ask") return { ...d, net };
+  const ask = (why: string): Decision => ({
+    verdict: "ask",
+    reason: `auto mode still asks: ${why}`,
+    suggestedGrants: d.suggestedGrants,
+  });
+  const run = (why: string): Decision => ({
+    verdict: "auto",
+    reason: `auto mode: ${why}`,
+    suggestedGrants: [],
+    net,
+  });
+
+  if (terminal) {
+    if (a.is_input) return run("input to a running command");
+    if (d.reason === "ps showing process environments") return ask(d.reason);
+    const what = irreversible(cmd, cfg.projectDir);
+    if (what) return ask(what);
+    const paths = absPaths(cmd);
+    for (let i = 0; i < paths.length; i += 1) {
+      const p = paths[i];
+      if (p.startsWith("~")) return ask("a path outside the workspace");
+      // eslint-disable-next-line no-continue
+      if (SAFE_PATHS.has(p) || p.startsWith("/dev/fd/")) continue;
+      if (!pathUnder(p, cfg.workspace, cfg.projectDir))
+        return ask(`a path outside the workspace: ${p}`);
+      if (!pathUnder(p, cfg.projectDir, cfg.projectDir))
+        return ask(`a path outside the project: ${p}`);
+    }
+    const segments = cmd.trim().split(SPLIT);
+    for (let s = 0; s < segments.length; s += 1) {
+      const argv = splitArgv(segments[s]);
+      for (let t = 0; t < argv.length; t += 1) {
+        const outside = pathCandidates(argv[t]).find(
+          (cand) =>
+            cand.split("/").includes("..") &&
+            !cand.startsWith("/") &&
+            !pathUnder(cand, cfg.projectDir, cfg.projectDir),
+        );
+        if (outside) return ask(`a path outside the project: ${outside}`);
+      }
+    }
+    return run("stays in the sandbox");
+  }
+  if (isFileEditor(tool, kind)) {
+    const path = typeof a.path === "string" ? a.path : "";
+    if (path && pathUnder(path, cfg.projectDir, cfg.projectDir))
+      return run("a write in the project");
+    return ask(`a write outside ${cfg.projectDir}`);
+  }
+  if (SEND_TOOL.test(tool) && !tool.startsWith("media_"))
+    return ask(`${tool} may send something off the box`);
+  return run(tool || kind);
+}
+
+export function classify(
+  action: ActionLike,
+  cfg: PolicyConfig = defaultPolicyConfig(),
+): Decision {
+  const d = classifyStrict(action, cfg);
+  return cfg.auto ? autoMode(action, cfg, d) : d;
 }
