@@ -44,6 +44,11 @@ describe("AutoModeButton", () => {
     expect(screen.queryByTestId("auto-mode-button")).toBeNull();
   });
 
+  it("shows its fallback (the stock lock) until then", () => {
+    render(<AutoModeButton fallback={<span data-testid="lock" />} />);
+    expect(screen.getByTestId("lock")).toBeTruthy();
+  });
+
   it("shows Asks, and switches the conversation and its planner to auto", () => {
     usePolicyStore.setState({
       byConversation: { "conv-1": { kind: "LlmkitAnalyzer", grants: [] } },

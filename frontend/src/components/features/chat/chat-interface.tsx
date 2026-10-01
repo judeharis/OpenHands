@@ -31,6 +31,7 @@ import { useUnifiedUploadFiles } from "#/hooks/mutation/use-unified-upload-files
 import { validateFiles } from "#/utils/file-validation";
 import { useConversationStore } from "#/stores/conversation-store";
 import ConfirmationModeEnabled from "./confirmation-mode-enabled";
+import { AutoModeButton } from "./auto-mode-button";
 import { V1ConfirmationButtons } from "#/components/shared/buttons/v1-confirmation-buttons";
 import { useTaskPolling } from "#/hooks/query/use-task-polling";
 import { useConversationWebSocket } from "#/contexts/conversation-websocket-context";
@@ -339,7 +340,7 @@ export function ChatInterface() {
           <QueuedMessages />
           <div className="flex justify-between relative">
             <div className="flex items-end gap-1">
-              <ConfirmationModeEnabled />
+              <AutoModeButton fallback={<ConfirmationModeEnabled />} />
               {isStartingStatus && (
                 <ChatStatusIndicator
                   statusColor={serverStatusColor}

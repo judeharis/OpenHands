@@ -428,6 +428,15 @@ export function ConversationWebSocketProvider({
     latestPlanningFileEventRef.current = null;
   }, [subConversationIds]);
 
+  // A planner the page cannot connect to has no history to wait for. One whose
+  // sandbox is gone (MISSING, no conversation_url) kept the whole chat on
+  // skeleton rows for ever after a reopen (2026-10-01): the main conversation
+  // had loaded, but "loading" waited on the planner's socket, which never opened.
+  useEffect(() => {
+    if (subConversations?.length && !planningAgentWsUrl)
+      setIsLoadingHistoryPlanning(false);
+  }, [subConversations, planningAgentWsUrl]);
+
   // Merged loading history state - true if either connection is still loading
   const isLoadingHistory = useMemo(
     () => isLoadingHistoryMain || isLoadingHistoryPlanning,

@@ -1196,6 +1196,72 @@ describe("Conversation WebSocket Handler", () => {
       });
     });
 
+    it("does not wait for a planner whose sandbox is gone (jentic)", async () => {
+      // After a reopen the planner came back MISSING with no conversation_url:
+      // its socket never opened and the chat stayed on skeleton rows.
+      const conversationId = "test-conversation-missing-planner";
+      const mockHistoryEvents = [
+        createMockUserMessageEvent({ id: "mp-1" }),
+        createMockMessageEvent({ id: "mp-2" }),
+      ];
+      mswServer.use(
+        http.get(
+          `http://localhost:3000/api/v1/conversation/${conversationId}/events/search`,
+          () => HttpResponse.json({ items: mockHistoryEvents }),
+        ),
+        http.get(
+          `http://localhost:3000/api/conversations/${conversationId}/events/count`,
+          () => HttpResponse.json(mockHistoryEvents.length),
+        ),
+        wsLink.addEventListener("connection", ({ client, server }) => {
+          server.connect();
+          mockHistoryEvents.forEach((event) =>
+            client.send(JSON.stringify(event)),
+          );
+        }),
+      );
+      function LoadingState() {
+        const context = useConversationWebSocket();
+        return (
+          <div data-testid="is-loading-history">
+            {context?.isLoadingHistory ? "true" : "false"}
+          </div>
+        );
+      }
+      const planner = {
+        id: "planner-gone",
+        conversation_url: null,
+        sandbox_status: "MISSING",
+      } as never;
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter initialEntries={[`/${conversationId}`]}>
+            <Routes>
+              <Route
+                path="/:conversationId"
+                element={
+                  <ConversationWebSocketProvider
+                    conversationId={conversationId}
+                    conversationUrl={`http://localhost:3000/api/conversations/${conversationId}`}
+                    sessionApiKey={null}
+                    subConversationIds={["planner-gone"]}
+                    subConversations={[planner]}
+                  >
+                    <LoadingState />
+                  </ConversationWebSocketProvider>
+                }
+              />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+      await waitFor(() => {
+        expect(screen.getByTestId("is-loading-history")).toHaveTextContent(
+          "false",
+        );
+      });
+    });
+
     it("should handle empty conversation history", async () => {
       const conversationId = "test-conversation-empty";
 

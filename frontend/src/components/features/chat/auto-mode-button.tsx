@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Typography } from "#/ui/typography";
 import { I18nKey } from "#/i18n/declaration";
@@ -16,8 +17,13 @@ import { cn } from "#/utils/utils";
  * tap) or "Auto" (the agent works in its sandbox unasked; pushing, uploading,
  * network floods and the download budget still ask). Shown once the kit's
  * policy is in place on the sandbox; applies to the planner too.
+ *
+ * It sits above the composer, where the stock "confirmation mode" lock was
+ * (`fallback`, shown until the policy is known): in the composer's button row
+ * a 384 px phone clipped it off the right edge (row 157 px wide, 233 px of
+ * buttons; 2026-10-01).
  */
-export function AutoModeButton() {
+export function AutoModeButton({ fallback = null }: { fallback?: ReactNode }) {
   const { t } = useTranslation();
   const { data: conversation } = useActiveConversation();
   const { data: subConversations } = useSubConversations(
@@ -33,7 +39,7 @@ export function AutoModeButton() {
     conversation.agent_kind === "acp" ||
     entry?.kind !== LLMKIT_ANALYZER_KIND
   )
-    return null;
+    return fallback;
 
   const auto = !!entry.auto;
   const handleClick = () => {
@@ -62,8 +68,10 @@ export function AutoModeButton() {
           : I18nKey.POLICY$AUTO_MODE_OFF_TITLE,
       )}
       className={cn(
-        "flex items-center gap-1 border rounded-[100px] transition-opacity cursor-pointer hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed px-2 shrink-0",
-        auto ? "border-amber-500 bg-amber-500/15" : "border-[#4B505F]",
+        "flex items-center gap-1 h-[26px] rounded-lg border transition-opacity cursor-pointer hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed px-2 shrink-0",
+        auto
+          ? "border-amber-500 bg-amber-500/15"
+          : "border-transparent bg-[#25272D]",
       )}
     >
       <Icon
