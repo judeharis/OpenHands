@@ -75,6 +75,7 @@ export const DEFAULT_ALLOW_COMMANDS = [
   "node (--version|-v)$",
   "python3? (--version|-V)$",
   "jentic-snapshot (list|show|diff)(\\s|$)",
+  "jentic-share (list|stop)(\\s|$)",
 ];
 
 const FIND_UNSAFE = new Set([

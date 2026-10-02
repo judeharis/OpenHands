@@ -1248,5 +1248,63 @@
       }
     },
     "verdict": "auto"
+  },
+  {
+    "name": "jentic-share list reads",
+    "action": {
+      "tool_name": "terminal",
+      "action": {
+        "kind": "TerminalAction",
+        "command": "jentic-share list"
+      }
+    },
+    "verdict": "auto"
+  },
+  {
+    "name": "jentic-share stop takes a share down",
+    "action": {
+      "tool_name": "terminal",
+      "action": {
+        "kind": "TerminalAction",
+        "command": "jentic-share stop tok_abcdefghijklmnop"
+      }
+    },
+    "verdict": "auto"
+  },
+  {
+    "name": "jentic-share of a file asks",
+    "action": {
+      "tool_name": "terminal",
+      "action": {
+        "kind": "TerminalAction",
+        "command": "jentic-share /workspace/project/out/report.pdf"
+      }
+    },
+    "verdict": "ask"
+  },
+  {
+    "name": "jentic-share extend asks",
+    "action": {
+      "tool_name": "terminal",
+      "action": {
+        "kind": "TerminalAction",
+        "command": "jentic-share extend tok_abcdefghijklmnop 30"
+      }
+    },
+    "verdict": "ask"
+  },
+  {
+    "name": "auto: jentic-share of a file runs",
+    "config": {
+      "auto": true
+    },
+    "action": {
+      "tool_name": "terminal",
+      "action": {
+        "kind": "TerminalAction",
+        "command": "jentic-share /workspace/project/out/report.pdf"
+      }
+    },
+    "verdict": "auto"
   }
 ]
