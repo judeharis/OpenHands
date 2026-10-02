@@ -74,6 +74,7 @@ export const DEFAULT_ALLOW_COMMANDS = [
   "npm (ls|view|--version|-v)(\\s|$)",
   "node (--version|-v)$",
   "python3? (--version|-V)$",
+  "jentic-snapshot (list|show|diff)(\\s|$)",
 ];
 
 const FIND_UNSAFE = new Set([

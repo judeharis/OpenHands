@@ -1201,5 +1201,52 @@
       }
     },
     "verdict": "ask"
+  },
+  {
+    "name": "jentic-snapshot list reads",
+    "action": {
+      "tool_name": "terminal",
+      "action": {
+        "kind": "TerminalAction",
+        "command": "jentic-snapshot list"
+      }
+    },
+    "verdict": "auto"
+  },
+  {
+    "name": "jentic-snapshot diff reads",
+    "action": {
+      "tool_name": "terminal",
+      "action": {
+        "kind": "TerminalAction",
+        "command": "jentic-snapshot diff 3f2a9c1e0b par-test/calc"
+      }
+    },
+    "verdict": "auto"
+  },
+  {
+    "name": "jentic-snapshot restore asks",
+    "action": {
+      "tool_name": "terminal",
+      "action": {
+        "kind": "TerminalAction",
+        "command": "jentic-snapshot restore 3f2a9c1e0b"
+      }
+    },
+    "verdict": "ask"
+  },
+  {
+    "name": "auto: jentic-snapshot restore runs",
+    "config": {
+      "auto": true
+    },
+    "action": {
+      "tool_name": "terminal",
+      "action": {
+        "kind": "TerminalAction",
+        "command": "jentic-snapshot restore 3f2a9c1e0b"
+      }
+    },
+    "verdict": "auto"
   }
 ]
