@@ -196,9 +196,7 @@ describe("Sidebar", () => {
       renderSidebar();
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId("automations-button"),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId("automations-button")).toBeInTheDocument();
       });
     });
 
@@ -213,6 +211,53 @@ describe("Sidebar", () => {
 
       expect(
         screen.queryByTestId("automations-button"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("jentic-x Models button", () => {
+    const health = (body: unknown, ok = true) =>
+      vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(async (input) =>
+          String(input).includes("/jentic_x/api/health")
+            ? ({ ok, json: async () => body } as Response)
+            : Promise.reject(new Error("unexpected fetch")),
+        );
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it("shows when /jentic_x/api/health is the jentic-x status server", async () => {
+      health({ ok: true, target: "aibox", mount: "/jentic_x" });
+      renderSidebar();
+      const link = await screen.findByTestId("jentic-models-button");
+      expect(link).toHaveAttribute("href", "/jentic_x/models/");
+    });
+
+    it("stays hidden when the app answers the path with its own page", async () => {
+      const spy = health(undefined);
+      spy.mockImplementation(
+        async () =>
+          ({
+            ok: true,
+            json: async () => {
+              throw new SyntaxError("<!doctype html>");
+            },
+          }) as unknown as Response,
+      );
+      renderSidebar();
+      await waitFor(() => expect(spy).toHaveBeenCalled());
+      expect(
+        screen.queryByTestId("jentic-models-button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("stays hidden when there is no such server", async () => {
+      const spy = health({}, false);
+      renderSidebar();
+      await waitFor(() => expect(spy).toHaveBeenCalled());
+      expect(
+        screen.queryByTestId("jentic-models-button"),
       ).not.toBeInTheDocument();
     });
   });

@@ -16,6 +16,8 @@ import { displayErrorToast } from "#/utils/custom-toast-handlers";
 import { I18nKey } from "#/i18n/declaration";
 import { cn } from "#/utils/utils";
 import { useJenticSurfaces } from "#/hooks/use-jentic-surfaces";
+import { useJenticModelsPage } from "#/hooks/use-jentic-models-page";
+import { JenticModelsButton } from "#/components/shared/buttons/jentic-models-button";
 
 export function Sidebar() {
   const { t } = useTranslation();
@@ -23,6 +25,7 @@ export function Sidebar() {
   const user = useGitUser();
   const { data: config } = useConfig();
   const surfaces = useJenticSurfaces();
+  const modelsPage = useJenticModelsPage();
   const {
     data: settings,
     error: settingsError,
@@ -95,6 +98,7 @@ export function Sidebar() {
                 disabled={settings?.email_verified === false}
               />
             )}
+            {modelsPage && <JenticModelsButton />}
           </div>
 
           <div className="flex flex-row md:flex-col md:items-center gap-[26px]">
