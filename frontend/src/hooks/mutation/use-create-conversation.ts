@@ -3,6 +3,7 @@ import V1ConversationService from "#/api/conversation-service/v1-conversation-se
 import { PluginSpec } from "#/api/conversation-service/v1-conversation-service.types";
 import { SuggestedTask } from "#/utils/types";
 import { Provider } from "#/types/settings";
+import { JenticMode, modeSuffix } from "#/hooks/use-jentic-modes";
 
 interface CreateConversationVariables {
   query?: string;
@@ -20,6 +21,9 @@ interface CreateConversationVariables {
   sandboxId?: string;
   /** Images for the first message, as data URLs. */
   imageUrls?: string[];
+  /** jentic-x: Chat or Agent, and a chat's own instructions (useJenticModes). */
+  jenticMode?: JenticMode;
+  extraPrompt?: string;
 }
 
 // Response type for V1 conversations
@@ -49,6 +53,8 @@ export const useCreateConversation = () => {
         plugins,
         sandboxId,
         imageUrls,
+        jenticMode,
+        extraPrompt,
       } = variables;
 
       // Use V1 API - creates a conversation start task
@@ -66,6 +72,7 @@ export const useCreateConversation = () => {
         sandboxId,
         undefined, // llm_model - the default profile
         imageUrls,
+        jenticMode ? modeSuffix(jenticMode, extraPrompt) : undefined,
       );
 
       // Return a special task ID that the frontend will recognize

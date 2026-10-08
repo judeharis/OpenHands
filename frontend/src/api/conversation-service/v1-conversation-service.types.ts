@@ -70,6 +70,8 @@ export interface V1AppConversationStartRequest {
   parent_conversation_id?: string | null;
   agent_type?: "default" | "plan";
   plugins?: PluginSpec[] | null; // Plugins to load when starting the conversation
+  /** Appended to the agent's system message. jentic-x puts its Chat/Agent marker first. */
+  system_message_suffix?: string | null;
 }
 
 export type V1AppConversationStartTaskStatus =

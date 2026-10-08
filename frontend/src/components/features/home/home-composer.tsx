@@ -19,8 +19,25 @@ import { isInlineImage } from "#/utils/is-file-image";
 import { useCreateConversation } from "#/hooks/mutation/use-create-conversation";
 import { useIsCreatingConversation } from "#/hooks/use-is-creating-conversation";
 import { cn } from "#/utils/utils";
+import { JenticMode, useJenticModes } from "#/hooks/use-jentic-modes";
 
 const MAX_HEIGHT = 200;
+// jentic-x only (useJenticModes); fork-only copy like the rest of this file.
+const JENTIC_MODES: [JenticMode, string, string][] = [
+  [
+    "chat",
+    "Chat",
+    "Just the model: no tools, so it answers fast. Add your own instructions below.",
+  ],
+  [
+    "agent",
+    "Agent",
+    "The model can run commands and edit files in the workspace, asking first. Slow to start on this box.",
+  ],
+];
+const INSTRUCTIONS = "Instructions";
+const INSTRUCTIONS_PLACEHOLDER =
+  "Optional instructions for this chat, e.g. answer in French, be brief, act as a tutor";
 // Fork-only copy; not in translation.json, which upstream keeps complete.
 const STARTING = "Starting…";
 const PLACEHOLDER = "How can I help?";
@@ -62,6 +79,17 @@ export function HomeComposer() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const holdFirstMessage = usePendingFirstMessageStore((s) => s.hold);
   const { t } = useTranslation();
+  const modes = useJenticModes();
+  const [jenticMode, setJenticMode] = React.useState<JenticMode>("chat");
+  const [extraPrompt, setExtraPrompt] = React.useState("");
+  const [showInstructions, setShowInstructions] = React.useState(false);
+  // On jentic-x the Chat/Agent chips replace Code/Plan, so a Plan is never started there.
+  const withMode = modes
+    ? {
+        jenticMode,
+        extraPrompt: jenticMode === "chat" ? extraPrompt : undefined,
+      }
+    : {};
 
   const isBusy =
     isPreparing || isPending || isSuccess || isCreatingConversationElsewhere;
@@ -108,7 +136,7 @@ export function HomeComposer() {
 
     if ((withAttachments && files.length > 0) || mode === "plan") {
       createConversation(
-        { agentType: "default" },
+        { agentType: "default", ...withMode },
         {
           onSuccess: (data) => {
             if (data.v1_task_id)
@@ -139,7 +167,12 @@ export function HomeComposer() {
       }
     }
     createConversation(
-      { query: text || undefined, imageUrls, agentType: "default" },
+      {
+        query: text || undefined,
+        imageUrls,
+        agentType: "default",
+        ...withMode,
+      },
       { onSuccess: (data) => open(data.conversation_id) },
     );
   };
@@ -201,6 +234,18 @@ export function HomeComposer() {
           onKeyDown={handleKeyDown}
           className="w-full resize-none bg-transparent text-white text-base leading-6 placeholder:text-[#A3A3A3] outline-none disabled:opacity-60"
         />
+        {modes && jenticMode === "chat" && showInstructions && (
+          <textarea
+            data-testid="home-chat-instructions"
+            rows={2}
+            value={extraPrompt}
+            disabled={isBusy}
+            maxLength={8000}
+            placeholder={INSTRUCTIONS_PLACEHOLDER}
+            onChange={(event) => setExtraPrompt(event.target.value)}
+            className="w-full resize-y rounded-xl border border-[#3C3F45] bg-[#1F2125] px-3 py-2 text-sm leading-5 text-white placeholder:text-[#A3A3A3] outline-none disabled:opacity-60"
+          />
+        )}
         <div className="flex items-center justify-between gap-3">
           <div
             className="flex items-center gap-1"
@@ -232,41 +277,81 @@ export function HomeComposer() {
                 if (fileInputRef.current) fileInputRef.current.value = "";
               }}
             />
-            {(
-              [
-                [
-                  "default",
-                  CodeTagIcon,
-                  t(I18nKey.COMMON$CODE),
-                  t(I18nKey.COMMON$CODE_AGENT_DESCRIPTION),
-                ],
-                [
-                  "plan",
-                  LessonPlanIcon,
-                  t(I18nKey.COMMON$PLAN),
-                  t(I18nKey.COMMON$PLAN_AGENT_DESCRIPTION),
-                ],
-              ] as const
-            ).map(([value_, Icon, label, description]) => (
+            {modes &&
+              JENTIC_MODES.map(([value_, label, description]) => (
+                <button
+                  key={value_}
+                  type="button"
+                  data-testid={`home-jentic-mode-${value_}`}
+                  aria-pressed={jenticMode === value_}
+                  title={description}
+                  disabled={isBusy}
+                  onClick={() => setJenticMode(value_)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 min-h-9 text-xs leading-4 cursor-pointer disabled:opacity-60",
+                    jenticMode === value_
+                      ? "bg-[#3C3F45] text-white"
+                      : "text-[#A3A3A3] hover:text-white",
+                  )}
+                >
+                  {value_ === "agent" && <CodeTagIcon width={14} height={14} />}
+                  {label}
+                </button>
+              ))}
+            {modes && jenticMode === "chat" && (
               <button
-                key={value_}
                 type="button"
-                data-testid={`home-mode-${value_}`}
-                aria-pressed={mode === value_}
-                title={description}
+                data-testid="home-chat-instructions-toggle"
+                aria-expanded={showInstructions}
                 disabled={isBusy}
-                onClick={() => setMode(value_)}
+                onClick={() => setShowInstructions((v) => !v)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 min-h-9 text-xs leading-4 cursor-pointer disabled:opacity-60",
-                  mode === value_
-                    ? "bg-[#3C3F45] text-white"
+                  "rounded-full px-2 min-h-9 text-xs leading-4 cursor-pointer disabled:opacity-60",
+                  showInstructions || extraPrompt.trim()
+                    ? "text-white"
                     : "text-[#A3A3A3] hover:text-white",
                 )}
               >
-                <Icon width={14} height={14} />
-                {label}
+                {INSTRUCTIONS}
+                {extraPrompt.trim() ? " ✓" : ""}
               </button>
-            ))}
+            )}
+            {!modes &&
+              (
+                [
+                  [
+                    "default",
+                    CodeTagIcon,
+                    t(I18nKey.COMMON$CODE),
+                    t(I18nKey.COMMON$CODE_AGENT_DESCRIPTION),
+                  ],
+                  [
+                    "plan",
+                    LessonPlanIcon,
+                    t(I18nKey.COMMON$PLAN),
+                    t(I18nKey.COMMON$PLAN_AGENT_DESCRIPTION),
+                  ],
+                ] as const
+              ).map(([value_, Icon, label, description]) => (
+                <button
+                  key={value_}
+                  type="button"
+                  data-testid={`home-mode-${value_}`}
+                  aria-pressed={mode === value_}
+                  title={description}
+                  disabled={isBusy}
+                  onClick={() => setMode(value_)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 min-h-9 text-xs leading-4 cursor-pointer disabled:opacity-60",
+                    mode === value_
+                      ? "bg-[#3C3F45] text-white"
+                      : "text-[#A3A3A3] hover:text-white",
+                  )}
+                >
+                  <Icon width={14} height={14} />
+                  {label}
+                </button>
+              ))}
           </div>
           <span className="text-xs leading-4 text-[#A3A3A3]">
             {isBusy ? STARTING : ""}

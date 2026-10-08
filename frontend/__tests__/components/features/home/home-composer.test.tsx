@@ -30,10 +30,85 @@ vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-i18next")>()),
   useTranslation: () => ({ t: (k: string) => k }),
 }));
+const jentic = vi.hoisted(() => ({ modes: false }));
+vi.mock("#/hooks/use-jentic-modes", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("#/hooks/use-jentic-modes")>()),
+  useJenticModes: () => jentic.modes,
+}));
 
 beforeEach(() => {
   createConversation.mockReset();
   usePendingFirstMessageStore.setState({ pending: null });
+  jentic.modes = false;
+});
+
+describe("jentic-x: Chat or Agent per conversation", () => {
+  it("shows Chat and Agent instead of Code and Plan, and starts a chat by default", async () => {
+    jentic.modes = true;
+    render(<HomeComposer />);
+    expect(screen.queryByTestId("home-mode-plan")).not.toBeInTheDocument();
+    expect(screen.getByTestId("home-jentic-mode-chat")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await userEvent.type(screen.getByTestId("home-composer"), "hello");
+    await userEvent.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => expect(createConversation).toHaveBeenCalled());
+    expect(createConversation.mock.calls[0][0]).toMatchObject({
+      query: "hello",
+      agentType: "default",
+      jenticMode: "chat",
+    });
+  });
+
+  it("carries a chat's own instructions", async () => {
+    jentic.modes = true;
+    render(<HomeComposer />);
+    await userEvent.click(screen.getByTestId("home-chat-instructions-toggle"));
+    await userEvent.type(
+      screen.getByTestId("home-chat-instructions"),
+      "Answer in French.",
+    );
+    await userEvent.type(screen.getByTestId("home-composer"), "hello");
+    await userEvent.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => expect(createConversation).toHaveBeenCalled());
+    expect(createConversation.mock.calls[0][0]).toMatchObject({
+      jenticMode: "chat",
+      extraPrompt: "Answer in French.",
+    });
+  });
+
+  it("starts an agent conversation when Agent is picked, without the chat instructions", async () => {
+    jentic.modes = true;
+    render(<HomeComposer />);
+    await userEvent.click(screen.getByTestId("home-jentic-mode-agent"));
+    expect(
+      screen.queryByTestId("home-chat-instructions-toggle"),
+    ).not.toBeInTheDocument();
+    await userEvent.type(screen.getByTestId("home-composer"), "fix the build");
+    await userEvent.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => expect(createConversation).toHaveBeenCalled());
+    expect(createConversation.mock.calls[0][0]).toMatchObject({
+      jenticMode: "agent",
+      extraPrompt: undefined,
+    });
+  });
+
+  it("sends no mode where the deployment has none (bruny)", async () => {
+    render(<HomeComposer />);
+    expect(
+      screen.queryByTestId("home-jentic-mode-chat"),
+    ).not.toBeInTheDocument();
+    await userEvent.type(screen.getByTestId("home-composer"), "hello");
+    await userEvent.click(screen.getByTestId("submit-button"));
+    await waitFor(() => expect(createConversation).toHaveBeenCalled());
+    expect(createConversation.mock.calls[0][0]).not.toHaveProperty(
+      "jenticMode",
+    );
+  });
 });
 
 describe("starting a conversation from the home screen (jentic)", () => {

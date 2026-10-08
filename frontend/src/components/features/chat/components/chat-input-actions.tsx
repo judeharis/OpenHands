@@ -8,6 +8,10 @@ import { useV1ResumeConversation } from "#/hooks/mutation/use-v1-resume-conversa
 import { ChangeAgentButton } from "../change-agent-button";
 import { SwitchAcpModelButton } from "../switch-acp-model-button";
 import { SwitchProfileButton } from "../switch-profile-button";
+import {
+  useConversationJenticMode,
+  useJenticModes,
+} from "#/hooks/use-jentic-modes";
 
 interface ChatInputActionsProps {
   disabled: boolean;
@@ -18,6 +22,10 @@ export function ChatInputActions({ disabled }: ChatInputActionsProps) {
   const v1PauseConversationMutation = useV1PauseConversation();
   const v1ResumeConversationMutation = useV1ResumeConversation();
   const { conversationId } = useConversationId();
+  // jentic-x: the conversation's Chat/Agent mode replaces the Plan chip (a planner would
+  // bring the full toolset back).
+  const modes = useJenticModes();
+  const jenticMode = useConversationJenticMode(conversationId, modes);
 
   const handlePauseAgent = () => {
     // V1: Pause the conversation (agent execution)
@@ -45,7 +53,23 @@ export function ChatInputActions({ disabled }: ChatInputActionsProps) {
       <div className="w-full min-w-0 flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 md:gap-4 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Tools />
-          <ChangeAgentButton />
+          {modes ? (
+            jenticMode && (
+              <span
+                data-testid="jentic-mode-badge"
+                title={
+                  jenticMode === "chat"
+                    ? "Chat: no tools. Start a new conversation in Agent mode to run commands or edit files."
+                    : "Agent: terminal and file editor."
+                }
+                className="shrink-0 rounded-full border border-[#3C3F45] px-2.5 py-1 text-xs leading-4 text-[#A3A3A3]"
+              >
+                {jenticMode === "chat" ? "Chat" : "Agent"}
+              </span>
+            )
+          ) : (
+            <ChangeAgentButton />
+          )}
           <SwitchProfileButton />
           <SwitchAcpModelButton />
         </div>

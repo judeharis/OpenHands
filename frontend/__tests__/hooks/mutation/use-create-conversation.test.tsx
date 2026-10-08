@@ -96,6 +96,7 @@ describe("useCreateConversation", () => {
         undefined, // sandboxId (set only by Build from a plan conversation)
         undefined, // llm_model
         undefined, // imageUrls (images attached on the home screen)
+        undefined, // system_message_suffix (jentic-x's Chat/Agent marker)
       );
     });
   });

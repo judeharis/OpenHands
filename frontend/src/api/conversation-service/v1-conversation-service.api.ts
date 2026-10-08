@@ -73,8 +73,12 @@ class V1ConversationService {
     sandbox_id?: string,
     llm_model?: string,
     initialImageUrls?: string[],
+    systemMessageSuffix?: string,
   ): Promise<V1AppConversationStartTask> {
     const body: V1AppConversationStartRequest = {
+      ...(systemMessageSuffix
+        ? { system_message_suffix: systemMessageSuffix }
+        : {}),
       selected_repository: selectedRepository,
       git_provider,
       selected_branch,
