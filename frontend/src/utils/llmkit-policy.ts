@@ -48,6 +48,10 @@ export const DEFAULT_ALLOW_TOOLS = [
   "browser_get_content",
   "browser_list_tabs",
   "finish",
+  // Glue mode (llmkit_glue): see llmkit_policy/core.py
+  "glue_find",
+  "glue_read",
+  "glue_run",
 ];
 
 export const DEFAULT_ALLOW_COMMANDS = [
@@ -912,10 +916,45 @@ function autoMode(
   return run(tool || kind);
 }
 
+/** Glue mode's shell, write and read as the terminal and editor actions they are (core.py _normalise). */
+function normalise(action: ActionLike): ActionLike {
+  const tool = String(action.tool_name || "");
+  if (!tool.startsWith("glue_")) return action;
+  const data =
+    ((action.action || {}) as { data?: Record<string, unknown> }).data ?? {};
+  const str = (v: unknown) => (v == null ? "" : String(v));
+  if (tool === "glue_shell")
+    return {
+      tool_name: "terminal",
+      action: { kind: "TerminalAction", command: str(data.command) },
+    };
+  if (tool === "glue_write")
+    return {
+      tool_name: "file_editor",
+      action: {
+        kind: "FileEditorAction",
+        command: "create",
+        path: str(data.path),
+        file_text: str(data.content),
+      },
+    };
+  if (tool === "glue_read")
+    return {
+      tool_name: "file_editor",
+      action: {
+        kind: "FileEditorAction",
+        command: "view",
+        path: str(data.path),
+      },
+    };
+  return action;
+}
+
 export function classify(
   action: ActionLike,
   cfg: PolicyConfig = defaultPolicyConfig(),
 ): Decision {
-  const d = classifyStrict(action, cfg);
-  return cfg.auto ? autoMode(action, cfg, d) : d;
+  const a = normalise(action);
+  const d = classifyStrict(a, cfg);
+  return cfg.auto ? autoMode(a, cfg, d) : d;
 }

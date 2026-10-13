@@ -20,6 +20,7 @@ import { useCreateConversation } from "#/hooks/mutation/use-create-conversation"
 import { useIsCreatingConversation } from "#/hooks/use-is-creating-conversation";
 import { cn } from "#/utils/utils";
 import { JenticMode, useJenticModes } from "#/hooks/use-jentic-modes";
+import PuzzleIcon from "#/icons/u-puzzle-piece.svg?react";
 
 const MAX_HEIGHT = 200;
 // jentic-x only (useJenticModes); fork-only copy like the rest of this file.
@@ -33,6 +34,11 @@ const JENTIC_MODES: [JenticMode, string, string][] = [
     "agent",
     "Agent",
     "The model can run commands and edit files in the workspace, asking first. Slow to start on this box.",
+  ],
+  [
+    "glue",
+    "Glue",
+    "The model works through saved scripts: it finds one and runs it, or writes and tests a new one for next time. Fast to start.",
   ],
 ];
 const INSTRUCTIONS = "Instructions";
@@ -295,6 +301,9 @@ export function HomeComposer() {
                   )}
                 >
                   {value_ === "agent" && <CodeTagIcon width={14} height={14} />}
+                  {value_ === "glue" && (
+                    <PuzzleIcon width={14} height={14} color="currentColor" />
+                  )}
                   {label}
                 </button>
               ))}

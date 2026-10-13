@@ -9,9 +9,24 @@ import { ChangeAgentButton } from "../change-agent-button";
 import { SwitchAcpModelButton } from "../switch-acp-model-button";
 import { SwitchProfileButton } from "../switch-profile-button";
 import {
+  JenticMode,
   useConversationJenticMode,
   useJenticModes,
 } from "#/hooks/use-jentic-modes";
+
+const MODE_BADGE: Record<JenticMode, { label: string; title: string }> = {
+  chat: {
+    label: "Chat",
+    title:
+      "Chat: no tools. Start a new conversation in Agent or Glue mode to run commands or edit files.",
+  },
+  agent: { label: "Agent", title: "Agent: terminal and file editor." },
+  glue: {
+    label: "Glue",
+    title:
+      "Glue: saved scripts (find, run, make), plus shell, read and write for one-offs.",
+  },
+};
 
 interface ChatInputActionsProps {
   disabled: boolean;
@@ -57,14 +72,10 @@ export function ChatInputActions({ disabled }: ChatInputActionsProps) {
             jenticMode && (
               <span
                 data-testid="jentic-mode-badge"
-                title={
-                  jenticMode === "chat"
-                    ? "Chat: no tools. Start a new conversation in Agent mode to run commands or edit files."
-                    : "Agent: terminal and file editor."
-                }
+                title={MODE_BADGE[jenticMode].title}
                 className="shrink-0 rounded-full border border-[#3C3F45] px-2.5 py-1 text-xs leading-4 text-[#A3A3A3]"
               >
-                {jenticMode === "chat" ? "Chat" : "Agent"}
+                {MODE_BADGE[jenticMode].label}
               </span>
             )
           ) : (

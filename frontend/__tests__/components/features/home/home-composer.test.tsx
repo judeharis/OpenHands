@@ -97,6 +97,26 @@ describe("jentic-x: Chat or Agent per conversation", () => {
     });
   });
 
+  it("starts a glue conversation when Glue is picked", async () => {
+    jentic.modes = true;
+    render(<HomeComposer />);
+    await userEvent.click(screen.getByTestId("home-jentic-mode-glue"));
+    expect(
+      screen.queryByTestId("home-chat-instructions-toggle"),
+    ).not.toBeInTheDocument();
+    await userEvent.type(
+      screen.getByTestId("home-composer"),
+      "how full is the disk",
+    );
+    await userEvent.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => expect(createConversation).toHaveBeenCalled());
+    expect(createConversation.mock.calls[0][0]).toMatchObject({
+      jenticMode: "glue",
+      extraPrompt: undefined,
+    });
+  });
+
   it("sends no mode where the deployment has none (bruny)", async () => {
     render(<HomeComposer />);
     expect(

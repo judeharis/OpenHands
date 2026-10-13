@@ -10,6 +10,12 @@ describe("modeSuffix", () => {
     expect(modeSuffix("chat")).toBe("<jentic-mode>chat</jentic-mode>");
   });
 
+  it("marks a glue conversation, without instructions", () => {
+    expect(modeSuffix("glue", "Be brief.")).toBe(
+      "<jentic-mode>glue</jentic-mode>",
+    );
+  });
+
   it("never sends instructions with an agent conversation", () => {
     expect(modeSuffix("agent", "Be brief.")).toBe(
       "<jentic-mode>agent</jentic-mode>",

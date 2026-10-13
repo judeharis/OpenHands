@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
-export type JenticMode = "chat" | "agent";
+export type JenticMode = "chat" | "agent" | "glue";
 
 /**
  * jentic-x: each conversation is Chat (no tools, a short system prompt, the user's own
- * instructions) or Agent (terminal and file editor). The app says whether this deployment
+ * instructions), Agent (terminal and file editor) or Glue (saved scripts: find, run, make;
+ * shell, read and write for one-offs). The app says whether this deployment
  * has modes (JENTIC_MODES=1 in jentic.env); bruny's jentic answers false, or nothing.
  */
 export function useJenticModes(): boolean {
@@ -47,7 +48,7 @@ export function useConversationJenticMode(
       });
       if (!r.ok) return null;
       const d = await r.json();
-      return d?.mode === "chat" || d?.mode === "agent"
+      return d?.mode === "chat" || d?.mode === "agent" || d?.mode === "glue"
         ? (d.mode as JenticMode)
         : null;
     },

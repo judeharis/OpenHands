@@ -1306,5 +1306,179 @@
       }
     },
     "verdict": "auto"
+  },
+  {
+    "name": "glue: find is read-only",
+    "action": {
+      "tool_name": "glue_find",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "query": "disk"
+        }
+      }
+    },
+    "verdict": "auto"
+  },
+  {
+    "name": "glue: run of a saved recipe runs",
+    "action": {
+      "tool_name": "glue_run",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "name": "disk-usage",
+          "args": {
+            "dir": "/workspace/project"
+          }
+        }
+      }
+    },
+    "verdict": "auto"
+  },
+  {
+    "name": "glue: make asks (it shows the script)",
+    "action": {
+      "tool_name": "glue_make",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "name": "x",
+          "description": "d",
+          "script": "echo hi"
+        }
+      }
+    },
+    "verdict": "ask"
+  },
+  {
+    "name": "glue: an allow-listed shell command runs",
+    "action": {
+      "tool_name": "glue_shell",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "command": "ls -la"
+        }
+      }
+    },
+    "verdict": "auto"
+  },
+  {
+    "name": "glue: another shell command asks",
+    "action": {
+      "tool_name": "glue_shell",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "command": "npm install"
+        }
+      }
+    },
+    "verdict": "ask"
+  },
+  {
+    "name": "glue: shell outside the workspace is deny",
+    "action": {
+      "tool_name": "glue_shell",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "command": "cat /etc/passwd"
+        }
+      }
+    },
+    "verdict": "deny"
+  },
+  {
+    "name": "glue: read in the workspace runs",
+    "action": {
+      "tool_name": "glue_read",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "path": "/workspace/project/a.py"
+        }
+      }
+    },
+    "verdict": "auto"
+  },
+  {
+    "name": "glue: read outside the workspace is deny",
+    "action": {
+      "tool_name": "glue_read",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "path": "/etc/shadow"
+        }
+      }
+    },
+    "verdict": "deny"
+  },
+  {
+    "name": "glue: write asks",
+    "action": {
+      "tool_name": "glue_write",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "path": "/workspace/project/a.py",
+          "content": "x"
+        }
+      }
+    },
+    "verdict": "ask"
+  },
+  {
+    "name": "auto: glue shell git push still asks",
+    "config": {
+      "auto": true
+    },
+    "action": {
+      "tool_name": "glue_shell",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "command": "git push"
+        }
+      }
+    },
+    "verdict": "ask"
+  },
+  {
+    "name": "auto: glue make runs",
+    "config": {
+      "auto": true
+    },
+    "action": {
+      "tool_name": "glue_make",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "name": "x",
+          "description": "d",
+          "script": "echo hi"
+        }
+      }
+    },
+    "verdict": "auto"
+  },
+  {
+    "name": "auto: glue write in the project runs",
+    "config": {
+      "auto": true
+    },
+    "action": {
+      "tool_name": "glue_write",
+      "action": {
+        "kind": "MCPToolAction",
+        "data": {
+          "path": "/workspace/project/a.py",
+          "content": "x"
+        }
+      }
+    },
+    "verdict": "auto"
   }
 ]
